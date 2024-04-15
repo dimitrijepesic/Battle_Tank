@@ -1,0 +1,3 @@
+C:/Users/korisnik/Desktop/Battle Tank/cmake-build-debug/CMakeFiles/Battle_Tank.dir
+C:/Users/korisnik/Desktop/Battle Tank/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/korisnik/Desktop/Battle Tank/cmake-build-debug/CMakeFiles/rebuild_cache.dir
