@@ -1,9 +1,10 @@
 #include <SDL.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
 
 #define SIZE 600
+
+static char curr_tank[50] = "images/tank1.bmp";
 
 void generate_map(SDL_Renderer *renderer, int N, int **map, int tile_size){
 
@@ -99,7 +100,7 @@ void make_map(int N, int **map){
 }
 
 void move_tank(SDL_Renderer *renderer, int N, SDL_Rect *tank, int **map, int dir){
-    SDL_Surface *tank_s = SDL_LoadBMP("images/t5.bmp");
+    SDL_Surface *tank_s = SDL_LoadBMP(curr_tank);
     SDL_Texture *tank_t = SDL_CreateTextureFromSurface(renderer, tank_s);
 
     int x = tank->x / tank->w;
@@ -113,21 +114,25 @@ void move_tank(SDL_Renderer *renderer, int N, SDL_Rect *tank, int **map, int dir
 
     switch (dir) {
         case 0: //levo
+            strcpy(curr_tank, "images/tank0.bmp");
             if (x > 0 && map[x - 1][y] > 1 && map[x - 1][y] < 7) {
                 tank->x = tank->x - tank->w;
             }
             break;
         case 1: //gore
+            strcpy(curr_tank, "images/tank1.bmp");
             if (y > 0 && map[x][y - 1] > 1 && map[x][y - 1] < 7) {
                 tank->y = tank->y - tank->w;
             }
             break;
         case 2: //desno
+            strcpy(curr_tank, "images/tank2.bmp");
             if (x < N - 1 && map[x + 1][y] > 1 && map[x + 1][y] < 7) {
                 tank->x = tank->x + tank->w;
             }
             break;
         case 3: //dole
+            strcpy(curr_tank, "images/tank3.bmp");
             if (y < N - 1 && map[x][y + 1] > 1 && map[x][y + 1] < 7) {
                 tank->y = tank->y + tank->w;
             }
@@ -135,7 +140,6 @@ void move_tank(SDL_Renderer *renderer, int N, SDL_Rect *tank, int **map, int dir
         default:
             break;
     }
-
     SDL_RenderCopy(renderer, tank_t, &select_tile, tank);
 
     SDL_FreeSurface(tank_s);
@@ -209,7 +213,7 @@ int main(int argc, char* argv[]) {
                 else if (event.key.keysym.sym == SDLK_RIGHT){
                     dir = 2;
                 }
-                else{
+                else if (event.key.keysym.sym == SDLK_DOWN){
                     dir = 3;
                 }
             }
@@ -218,7 +222,7 @@ int main(int argc, char* argv[]) {
         move_tank(renderer, N, &tank, map, dir);
         dir = -1;
         SDL_RenderPresent(renderer);
-        SDL_Delay(25);
+        SDL_Delay(30);
     }
 
     for (int i = 0; i < N; i++)
