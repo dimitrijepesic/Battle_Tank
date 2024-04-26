@@ -146,6 +146,68 @@ void move_tank(SDL_Renderer *renderer, int N, SDL_Rect *tank, int **map, int dir
     SDL_DestroyTexture(tank_t);
 }
 
+void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **map){
+    SDL_Surface *bullet_s = SDL_LoadBMP("images/t4.bmp");
+    SDL_Texture *bullet_t = SDL_CreateTextureFromSurface(renderer, bullet_s);
+    SDL_FreeSurface(bullet_s);
+
+    SDL_Rect tile[N][N];
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            tile[i][j].x = i * tile_size + tile_size / 2;
+            tile[i][j].y = j * tile_size + tile_size / 2;
+            tile[i][j].w = tile_size / 8;
+            tile[i][j].h = tile_size / 8;
+        }
+    }
+
+    SDL_Rect select_tile;
+    select_tile.x = 0;
+    select_tile.y = 0;
+    select_tile.w = tile_size / 8;
+    select_tile.h = tile_size / 8;
+
+    SDL_Delay(50);
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            switch(bullets[i][j]){
+                case 1:
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10))
+                        bullets[i - 1][j] = 1;
+                    bullets[i][j] = 0;
+                    break;
+                case 2:
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10))
+                        bullets[i][j - 1] = 2;
+                    bullets[i][j] = 0;
+                    break;
+            }
+        }
+    }
+    for (int i = N - 1; i >= 0; i--){
+        for (int j = N - 1; j >= 0; j--){
+            switch(bullets[i][j]){
+                case 3:
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10))
+                        bullets[i + 1][j] = 3;
+                    bullets[i][j] = 0;
+                    break;
+                case 4:
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10))
+                        bullets[i][j + 1] = 4;
+                    bullets[i][j] = 0;
+                    break;
+            }
+        }
+    }
+
+    SDL_DestroyTexture(bullet_t);
+}
+
 int main(int argc, char* argv[]) {
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
@@ -154,7 +216,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int N = 10; //dimenzije mape koje treba da se unose preko menija
+    int N = 15; //dimenzije mape koje treba da se unose preko menija
 
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
@@ -189,6 +251,18 @@ int main(int argc, char* argv[]) {
         map[i] = calloc(N, sizeof (int));
     make_map(N, map);
 
+    int **bullets;
+    bullets = calloc(N, sizeof (int*));
+    if (!bullets) {
+        perror("Greska u alokaciji memorije za metkove.");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    for (int i = 0; i < N; i++)
+        bullets[i] = calloc(N, sizeof (int));
+
     SDL_Rect tank;
     tank.x = N / 2 * tile_size;
     tank.y = (N - 3) * tile_size;
@@ -216,9 +290,15 @@ int main(int argc, char* argv[]) {
                 else if (event.key.keysym.sym == SDLK_DOWN){
                     dir = 3;
                 }
+                else if (event.key.keysym.sym == SDLK_SPACE){
+                    int x = tank.x / tank.w;
+                    int y = tank.y / tank.w;
+                    bullets[x][y] = curr_tank[11] - '0' + 1;
+                }
             }
         }
         generate_map(renderer, N, map, tile_size);
+        shoot(renderer, N, bullets, tile_size, map);
         move_tank(renderer, N, &tank, map, dir);
         dir = -1;
         SDL_RenderPresent(renderer);
