@@ -169,6 +169,14 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
     SDL_Texture *bullet_t = SDL_CreateTextureFromSurface(renderer, bullet_s);
     SDL_FreeSurface(bullet_s);
 
+    SDL_Surface *explosion_s = SDL_LoadBMP("images/explosion.bmp");
+    SDL_Texture *explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
+    SDL_FreeSurface(explosion_s);
+
+    SDL_Surface *explosion2_s = SDL_LoadBMP("images/explosion2.bmp");
+    SDL_Texture *explosion2_t = SDL_CreateTextureFromSurface(renderer, explosion2_s);
+    SDL_FreeSurface(explosion2_s);
+
     SDL_Rect tile[N][N];
     for (int i = 0; i < N; i++){
         for (int j = 0; j < N; j++){
@@ -185,6 +193,8 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
     select_tile.w = tile_size / 8;
     select_tile.h = tile_size / 8;
 
+    SDL_Rect explosion_rect;
+
     SDL_Delay(50);
     for (int i = 0; i < N; i++){
         for (int j = 0; j < N; j++){
@@ -197,12 +207,22 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
                         kill_player(N, tile_size);
                     }
                     SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    explosion_rect.x = tile[i - 1][j].x - tile_size / 2;
+                    explosion_rect.y = tile[i - 1][j].y - tile_size / 2;
+                    explosion_rect.w = tile_size;
+                    explosion_rect.h = tile_size;
                     if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
                         if (!bullets[i - 1][j]) bullets[i - 1][j] = 1;
                         else bullets[i - 1][j] = 0;
                     }
                     else if (i > 0 && (map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9)) {
                         map[i - 1][j] = 2;
+                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
+                    }
+                    else if (i > 0 && !(map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9)) {
+                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
@@ -214,12 +234,22 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
                         kill_player(N, tile_size);
                     }
                     SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    explosion_rect.x = tile[i][j - 1].x - tile_size / 2;
+                    explosion_rect.y = tile[i][j - 1].y - tile_size / 2;
+                    explosion_rect.w = tile_size;
+                    explosion_rect.h = tile_size;
                     if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
                         if (!bullets[i][j - 1]) bullets[i][j - 1] = 2;
                         else bullets[i][j - 1] = 0;
                     }
                     else if (j > 0 && (map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9)) {
                         map[i][j - 1] = 2;
+                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
+                    }
+                    else if (j > 0 && !(map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9)) {
+                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
@@ -230,36 +260,56 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
         for (int j = N - 1; j >= 0; j--){
             switch(bullets[i][j]){
                 case 3:
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
                     if(i < N - 1 && enemies[i + 1][j]){
                         kill_enemy(i+1, j, renderer, map, enemies);
                     }
                     else if(i+1 ==  tank.x && j == tank.y){
                         kill_player(N, tile_size);
                     }
-                    else if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    explosion_rect.x = tile[i + 1][j].x - tile_size / 2;
+                    explosion_rect.y = tile[i + 1][j].y - tile_size / 2;
+                    explosion_rect.w = tile_size;
+                    explosion_rect.h = tile_size;
+                    if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
                         if (!bullets[i + 1][j]) bullets[i + 1][j] = 3;
                         else bullets[i + 1][j] = 0;
                     }
                     else if (i < N - 1 && (map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9)) {
                         map[i + 1][j] = 2;
+                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
+                    }
+                    else if (i < N - 1 && !(map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9)) {
+                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
                 case 4:
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
                     if(j < N - 1 && enemies[i][j+1]){
                         kill_enemy(i, j+1, renderer, map, enemies);
                     }
                     else if(i ==  tank.x && j+1 == tank.y){
                         kill_player(N, tile_size);
                     }
+                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
+                    explosion_rect.x = tile[i][j + 1].x - tile_size / 2;
+                    explosion_rect.y = tile[i][j + 1].y - tile_size / 2;
+                    explosion_rect.w = tile_size;
+                    explosion_rect.h = tile_size;
                     if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)){
                         if(!bullets[i][j + 1]) bullets[i][j + 1] = 4;
                         else bullets[i][j + 1] = 0;
                     }
                     else if (j < N - 1 && (map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9)) {
                         map[i][j + 1] = 2;
+                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
+                    }
+                    else if (j < N - 1 && !(map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9)) {
+                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
@@ -267,6 +317,7 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
         }
     }
 
+    SDL_DestroyTexture(explosion_t);
     SDL_DestroyTexture(bullet_t);
 }
 
