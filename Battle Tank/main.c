@@ -7,6 +7,7 @@
 static char curr_tank[50] = "images/tank1.bmp";
 int score = 0, lives = 2, tanks_left = 15, N = 15;
 Uint32 last_shot = 0, shoot_cooldown = 500;
+Uint32 last_move = 0, enemy_speed = 500;
 SDL_Rect tank;
 
 void generate_map(SDL_Renderer *renderer, int N, int **map, int tile_size){
@@ -321,6 +322,187 @@ void shoot(SDL_Renderer *renderer, int N, int **bullets, int tile_size, int **ma
     SDL_DestroyTexture(bullet_t);
 }
 
+void generate_enemy(SDL_Renderer *renderer, int N, int **enemies, int tile_size) {
+    // 1 - obican gleda levo, 2 - obican gleda napred, 3 - obican gleda desno, 4 - obican gleda dole
+    // 5 - specijalni gleda levo, 6 - specijalni gleda napred, 7 - specijalni gleda desno, 8 - specijalni gleda dole
+
+    SDL_Surface *enemy0 = SDL_LoadBMP("images/enemy0.bmp");
+    SDL_Surface *enemy1 = SDL_LoadBMP("images/enemy1.bmp");
+    SDL_Surface *enemy2 = SDL_LoadBMP("images/enemy2.bmp");
+    SDL_Surface *enemy3 = SDL_LoadBMP("images/enemy3.bmp");
+    SDL_Surface *spec0 = SDL_LoadBMP("images/spec0.bmp");
+    SDL_Surface *spec1 = SDL_LoadBMP("images/spec1.bmp");
+    SDL_Surface *spec2 = SDL_LoadBMP("images/spec2.bmp");
+    SDL_Surface *spec3 = SDL_LoadBMP("images/spec3.bmp");
+
+    SDL_Texture *enemy0_t = SDL_CreateTextureFromSurface(renderer, enemy0);
+    SDL_Texture *enemy1_t = SDL_CreateTextureFromSurface(renderer, enemy1);
+    SDL_Texture *enemy2_t = SDL_CreateTextureFromSurface(renderer, enemy2);
+    SDL_Texture *enemy3_t = SDL_CreateTextureFromSurface(renderer, enemy3);
+    SDL_Texture *spec0_t= SDL_CreateTextureFromSurface(renderer, spec0);
+    SDL_Texture *spec1_t= SDL_CreateTextureFromSurface(renderer, spec1);
+    SDL_Texture *spec2_t= SDL_CreateTextureFromSurface(renderer, spec2);
+    SDL_Texture *spec3_t= SDL_CreateTextureFromSurface(renderer, spec3);
+
+    SDL_FreeSurface(enemy0);
+    SDL_FreeSurface(enemy1);
+    SDL_FreeSurface(enemy2);
+    SDL_FreeSurface(enemy3);
+    SDL_FreeSurface(spec0);
+    SDL_FreeSurface(spec1);
+    SDL_FreeSurface(spec2);
+    SDL_FreeSurface(spec3);
+
+    SDL_Rect tile[N][N];
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            tile[i][j].x = i * tile_size;
+            tile[i][j].y = j * tile_size;
+            tile[i][j].w = tile_size;
+            tile[i][j].h = tile_size;
+        }
+    }
+
+    SDL_Rect select_tile;
+    select_tile.x = 0;
+    select_tile.y = 0;
+    select_tile.w = tile_size;
+    select_tile.h = tile_size;
+
+
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            switch(enemies[i][j]){
+                case 1:
+                    SDL_RenderCopy(renderer, enemy0_t, &select_tile, &tile[i][j]);
+                break;
+                case 2:
+                    SDL_RenderCopy(renderer, enemy1_t, &select_tile, &tile[i][j]);
+                break;
+                case 3:
+                    SDL_RenderCopy(renderer, enemy2_t, &select_tile, &tile[i][j]);
+                break;
+                case 4:
+                    SDL_RenderCopy(renderer, enemy3_t, &select_tile, &tile[i][j]);
+                break;
+                case 5:
+                    SDL_RenderCopy(renderer, spec0_t, &select_tile, &tile[i][j]);
+                break;
+                case 6:
+                    SDL_RenderCopy(renderer, spec1_t, &select_tile, &tile[i][j]);
+                break;
+                case 7:
+                    SDL_RenderCopy(renderer, spec2_t, &select_tile, &tile[i][j]);
+                break;
+                case 8:
+                    SDL_RenderCopy(renderer, spec3_t, &select_tile, &tile[i][j]);
+                break;
+                default:
+                    break;
+            }
+        }
+    }
+    SDL_DestroyTexture(enemy0_t);
+    SDL_DestroyTexture(enemy1_t);
+    SDL_DestroyTexture(enemy2_t);
+    SDL_DestroyTexture(enemy3_t);
+    SDL_DestroyTexture(spec0_t);
+    SDL_DestroyTexture(spec1_t);
+    SDL_DestroyTexture(spec2_t);
+    SDL_DestroyTexture(spec3_t);
+}
+
+void generate_bonus(SDL_Renderer *renderer, int N, int **bonuses, int tile_size) {
+    // 1 - srce, 2 - jedna zvezda, 3 - dve zvezde, 4 - tri zvezde
+    // 5 - bomba, 6 - stit, 7 - lopata, 8 - sat
+
+    SDL_Surface *b1 = SDL_LoadBMP("images/life.bmp");
+    SDL_Surface *b2 = SDL_LoadBMP("images/one.bmp");
+    SDL_Surface *b3 = SDL_LoadBMP("images/two.bmp");
+    SDL_Surface *b4 = SDL_LoadBMP("images/three.bmp");
+    SDL_Surface *b5= SDL_LoadBMP("images/bomb.bmp");
+    SDL_Surface *b6= SDL_LoadBMP("images/shield.bmp");
+    SDL_Surface *b7= SDL_LoadBMP("images/shovel.bmp");
+    SDL_Surface *b8= SDL_LoadBMP("images/clock.bmp");
+
+    SDL_Texture *b1_t = SDL_CreateTextureFromSurface(renderer, b1);
+    SDL_Texture *b2_t = SDL_CreateTextureFromSurface(renderer, b2);
+    SDL_Texture *b3_t = SDL_CreateTextureFromSurface(renderer, b3);
+    SDL_Texture *b4_t = SDL_CreateTextureFromSurface(renderer, b4);
+    SDL_Texture *b5_t= SDL_CreateTextureFromSurface(renderer, b5);
+    SDL_Texture *b6_t= SDL_CreateTextureFromSurface(renderer, b6);
+    SDL_Texture *b7_t= SDL_CreateTextureFromSurface(renderer, b7);
+    SDL_Texture *b8_t= SDL_CreateTextureFromSurface(renderer, b8);
+
+    SDL_FreeSurface(b1);
+    SDL_FreeSurface(b2);
+    SDL_FreeSurface(b3);
+    SDL_FreeSurface(b4);
+    SDL_FreeSurface(b5);
+    SDL_FreeSurface(b6);
+    SDL_FreeSurface(b7);
+    SDL_FreeSurface(b8);
+
+    SDL_Rect tile[N][N];
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            tile[i][j].x = i * tile_size;
+            tile[i][j].y = j * tile_size;
+            tile[i][j].w = tile_size;
+            tile[i][j].h = tile_size;
+        }
+    }
+
+    SDL_Rect select_tile;
+    select_tile.x = 0;
+    select_tile.y = 0;
+    select_tile.w = tile_size;
+    select_tile.h = tile_size;
+
+
+    for (int i = 0; i < N; i++){
+        for (int j = 0; j < N; j++){
+            switch(bonuses[i][j]){
+                case 1:
+                    SDL_RenderCopy(renderer, b1_t, &select_tile, &tile[i][j]);
+                break;
+                case 2:
+                    SDL_RenderCopy(renderer, b2_t, &select_tile, &tile[i][j]);
+                break;
+                case 3:
+                    SDL_RenderCopy(renderer, b3_t, &select_tile, &tile[i][j]);
+                break;
+                case 4:
+                    SDL_RenderCopy(renderer, b4_t, &select_tile, &tile[i][j]);
+                break;
+                case 5:
+                    SDL_RenderCopy(renderer, b5_t, &select_tile, &tile[i][j]);
+                break;
+                case 6:
+                    SDL_RenderCopy(renderer, b6_t, &select_tile, &tile[i][j]);
+                break;
+                case 7:
+                    SDL_RenderCopy(renderer, b7_t, &select_tile, &tile[i][j]);
+                break;
+                case 8:
+                    SDL_RenderCopy(renderer, b8_t, &select_tile, &tile[i][j]);
+                break;
+                default:
+                    break;
+            }
+        }
+    }
+    SDL_DestroyTexture(b1_t);
+    SDL_DestroyTexture(b2_t);
+    SDL_DestroyTexture(b3_t);
+    SDL_DestroyTexture(b4_t);
+    SDL_DestroyTexture(b5_t);
+    SDL_DestroyTexture(b6_t);
+    SDL_DestroyTexture(b7_t);
+    SDL_DestroyTexture(b8_t);
+}
+
+
 int main(int argc, char* argv[]) {
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
@@ -328,7 +510,7 @@ int main(int argc, char* argv[]) {
         perror("Greska u inicijalizaciji.");
         return 1;
     }
-
+    int jana = 1;
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
 
@@ -362,13 +544,15 @@ int main(int argc, char* argv[]) {
         map[i] = calloc(N, sizeof (int));
     make_map(N, map);
 
-    int **enemies;
-    enemies = calloc(N, sizeof (int*));
+    int **enemies = calloc(N, sizeof (int*));
     for (int i = 0; i < N; i++)
         enemies[i] = calloc(N, sizeof (int));
 
-    int **bullets;
-    bullets = calloc(N, sizeof (int*));
+    int **bonuses = calloc(N, sizeof (int*));
+    for (int i = 0; i < N; i++)
+        bonuses[i] = calloc(N, sizeof (int));
+
+    int **bullets = calloc(N, sizeof (int*));
     if (!bullets) {
         perror("Greska u alokaciji memorije za metkove.");
         SDL_DestroyRenderer(renderer);
@@ -421,8 +605,15 @@ int main(int argc, char* argv[]) {
             }
         }
         generate_map(renderer, N, map, tile_size);
+        generate_bonus(renderer, N, bonuses, tile_size);
         shoot(renderer, N, bullets, tile_size, map, enemies);
         move_tank(renderer, N, map, dir);
+        Uint32 curr_time = SDL_GetTicks();
+        if (curr_time - last_move > enemy_speed) {
+            // move_enemy();
+            last_move = curr_time;
+        }
+        generate_enemy(renderer, N, enemies, tile_size);
         dir = -1;
         SDL_RenderPresent(renderer);
         SDL_Delay(20);
