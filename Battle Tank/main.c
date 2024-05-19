@@ -2,13 +2,12 @@
 #include <time.h>
 #include <SDL.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 #define SIZE 300
 
 static char curr_tank[50] = "images/tank1.bmp";
-int score = 0, lives = 2, tanks_left = 15, N = 15;
+int score = 0, lives = 2, tanks_left = 15, N = 10;
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0;
 Uint32 enemy_speed = 500;
@@ -50,7 +49,7 @@ node *create_node(int name, node *parent) {
     return nov_node;
 }
 
-void generate_map(SDL_Renderer *renderer, int N, int **map, int tile_size){
+void generate_map(SDL_Renderer *renderer, int **map, int tile_size){
 
     SDL_Surface *surface1 = SDL_LoadBMP("images/t1.bmp");
     SDL_Surface *surface2 = SDL_LoadBMP("images/t2.bmp");
@@ -81,37 +80,41 @@ void generate_map(SDL_Renderer *renderer, int N, int **map, int tile_size){
     }
 
     SDL_Rect select_tile;
-    select_tile.x = 0;
-    select_tile.y = 0;
     select_tile.w = tile_size;
     select_tile.h = tile_size;
+    select_tile.x = 0;
+    select_tile.y = 0;
 
     SDL_SetRenderDrawColor(renderer, 0x66, 0x66, 0xBB, 0xFF);
     SDL_RenderClear(renderer);
     SDL_Delay(25);
+
+    static double water_angle = 0.0;
+    water_angle += 90.0;
+
     for (int i = 0; i < N; i++){
         for (int j = 0; j < N; j++){
             switch(map[i][j]){
                 case 1:
-                    SDL_RenderCopy(renderer, texture1, &select_tile, &tile[i][j]); //voda
+                    SDL_RenderCopyEx(renderer, texture1, &select_tile, &tile[i][j], water_angle, NULL, SDL_FLIP_NONE); // voda
                     break;
                 case 2:
                 case 3:
                 case 4:
                 case 5:
                 case 6:
-                    SDL_RenderCopy(renderer, texture2, &select_tile, &tile[i][j]); //put
+                    SDL_RenderCopy(renderer, texture2, &select_tile, &tile[i][j]); // put
                     break;
                 case 7:
                 case 8:
                 case 9:
-                    SDL_RenderCopy(renderer, texture3, &select_tile, &tile[i][j]); //cigla
+                    SDL_RenderCopy(renderer, texture3, &select_tile, &tile[i][j]); // cigla
                     break;
                 case 10:
-                    SDL_RenderCopy(renderer, texture4, &select_tile, &tile[i][j]); //metal
+                    SDL_RenderCopy(renderer, texture4, &select_tile, &tile[i][j]); // metal
                     break;
                 case 11:
-                    SDL_RenderCopy(renderer, texture5, &select_tile, &tile[i][j]); //baza
+                    SDL_RenderCopy(renderer, texture5, &select_tile, &tile[i][j]); // baza
                     break;
                 default:
                     break;
@@ -125,6 +128,7 @@ void generate_map(SDL_Renderer *renderer, int N, int **map, int tile_size){
     SDL_DestroyTexture(texture4);
     SDL_DestroyTexture(texture5);
 }
+
 
 void make_map(int N, int **map){
     srand(time(NULL));
@@ -145,7 +149,7 @@ void make_map(int N, int **map){
     map[N / 2 - 1][N - 3] = map[N / 2 + 1][N - 3] = 2;
 }
 
-void move_tank(SDL_Renderer *renderer, int N, int **map, int dir, int **enemies){
+void move_tank(SDL_Renderer *renderer, int **map, int dir, int **enemies){
     SDL_Surface *tank_s = SDL_LoadBMP(curr_tank);
     SDL_Texture *tank_t = SDL_CreateTextureFromSurface(renderer, tank_s);
 
@@ -191,17 +195,11 @@ void game_over(){
     // ovde treba da se prekine igra i ukljuci pocetni meni, prikazu high score - ovi...
     // to cemo kasnije
 }
-void kill_enemy(int i, int j, int **map, int **enemies, SDL_Renderer *renderer){
+void kill_enemy(int i, int j, int **map, int **enemies, SDL_Renderer *renderer, int **explosion){
     score += enemies[i][j] * 100;
     enemies[i][j] = 0;
     tanks_left--;
-
-    SDL_Surface *explosion_s = SDL_LoadBMP("images/explosion.bmp");
-    SDL_Texture *explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
-    SDL_FreeSurface(explosion_s);
-    SDL_Rect explosion_rect = {i * tank.w, j * tank.w, tank.w, tank.w};
-    SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
-    SDL_DestroyTexture(explosion_t);
+    explosion[i][j] = 12;
 }
 
 void kill_player(int n, int tile_size, int pu){
@@ -216,37 +214,26 @@ void kill_player(int n, int tile_size, int pu){
     }
 }
 
-
-void shoot(SDL_Renderer *renderer, int **bullets, int tile_size, int **map, int **enemies, int pu){
-    SDL_Surface *bullet_s = SDL_LoadBMP("images/t4.bmp");
+void shoot(SDL_Renderer *renderer, int **bullets, int tile_size, int **map, int **enemies, int pu, int **explosion){
+    SDL_Surface *bullet_s = SDL_LoadBMP("images/bullet.bmp");
     SDL_Texture *bullet_t = SDL_CreateTextureFromSurface(renderer, bullet_s);
     SDL_FreeSurface(bullet_s);
-
-    SDL_Surface *explosion_s = SDL_LoadBMP("images/explosion.bmp");
-    SDL_Texture *explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
-    SDL_FreeSurface(explosion_s);
-
-    SDL_Surface *explosion2_s = SDL_LoadBMP("images/explosion2.bmp");
-    SDL_Texture *explosion2_t = SDL_CreateTextureFromSurface(renderer, explosion2_s);
-    SDL_FreeSurface(explosion2_s);
 
     SDL_Rect tile[N][N];
     for (int i = 0; i < N; i++){
         for (int j = 0; j < N; j++){
-            tile[i][j].x = i * tile_size + tile_size / 2;
-            tile[i][j].y = j * tile_size + tile_size / 2;
-            tile[i][j].w = tile_size / 8;
-            tile[i][j].h = tile_size / 8;
+            tile[i][j].x = i * tile_size + tile_size / 4;
+            tile[i][j].y = j * tile_size + tile_size / 4;
+            tile[i][j].w = tile_size / 2;
+            tile[i][j].h = tile_size / 2;
         }
     }
 
     SDL_Rect select_tile;
     select_tile.x = 0;
     select_tile.y = 0;
-    select_tile.w = tile_size / 8;
-    select_tile.h = tile_size / 8;
-
-    SDL_Rect explosion_rect;
+    select_tile.w = tile_size;
+    select_tile.h = tile_size;
 
     SDL_Delay(50);
     for (int i = 0; i < N; i++){
@@ -254,56 +241,48 @@ void shoot(SDL_Renderer *renderer, int **bullets, int tile_size, int **map, int 
             switch(bullets[i][j]){
                 case 1:
                     if(i > 0 && enemies[i - 1][j]){
-                        kill_enemy(i - 1, j, map, enemies, renderer);
+                        kill_enemy(i - 1, j, map, enemies, renderer, explosion);
                         bullets[i - 1][j] = 1;
                     }
                     else if(i - 1 ==  tank.x / tile_size && j == tank.y / tile_size){
                         kill_player(N, tile_size, pu);
                     }
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
-                    explosion_rect.x = tile[i - 1][j].x - tile_size / 2;
-                    explosion_rect.y = tile[i - 1][j].y - tile_size / 2;
-                    explosion_rect.w = tile_size;
-                    explosion_rect.h = tile_size;
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 270, NULL, SDL_FLIP_NONE);
                     if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
                         if (!bullets[i - 1][j]) bullets[i - 1][j] = 1;
                         else bullets[i - 1][j] = 0;
                     }
                     else if (i > 0 && (map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9 || (map[i - 1][j] == 10 && pu == 6))) { //!!!
                         map[i - 1][j] = 2;
-                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        explosion[i - 1][j] = 12;
                         SDL_Delay(50);
                     }
                     else if (i > 0 && !(map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9)) {
-                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        explosion[i - 1][j] = 12;
                         SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
                 case 2:
                     if(j > 0 && enemies[i][j - 1]){
-                        kill_enemy(i, j - 1, map, enemies, renderer);
+                        kill_enemy(i, j - 1, map, enemies, renderer, explosion);
                         bullets[i][j - 1] = 1;
                     }
                     else if(i ==  tank.x / tile_size && j - 1 == tank.y / tile_size){
                         kill_player(N, tile_size, pu);
                     }
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
-                    explosion_rect.x = tile[i][j - 1].x - tile_size / 2;
-                    explosion_rect.y = tile[i][j - 1].y - tile_size / 2;
-                    explosion_rect.w = tile_size;
-                    explosion_rect.h = tile_size;
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 0, NULL, SDL_FLIP_NONE);
                     if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
                         if (!bullets[i][j - 1]) bullets[i][j - 1] = 2;
                         else bullets[i][j - 1] = 0;
                     }
                     else if (j > 0 && (map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9  || (map[i][j - 1] == 10 && pu == 6))) {//!!!
                         map[i][j - 1] = 2;
-                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        explosion[i][j - 1] = 12;
                         SDL_Delay(50);
                     }
                     else if (j > 0 && !(map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9)) {
-                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        explosion[i][j - 1] = 12;
                         SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
@@ -318,56 +297,48 @@ void shoot(SDL_Renderer *renderer, int **bullets, int tile_size, int **map, int 
             switch(bullets[i][j]){
                 case 3:
                     if(i < N - 1 && enemies[i + 1][j]){
-                        kill_enemy(i+1, j, map, enemies, renderer);
+                        kill_enemy(i+1, j, map, enemies, renderer, explosion);
                         bullets[i + 1][j] = 1;
                     }
                     else if(i+1 ==  tank.x / tile_size && j == tank.y / tile_size){
                         kill_player(N, tile_size, pu);
                     }
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
-                    explosion_rect.x = tile[i + 1][j].x - tile_size / 2;
-                    explosion_rect.y = tile[i + 1][j].y - tile_size / 2;
-                    explosion_rect.w = tile_size;
-                    explosion_rect.h = tile_size;
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 90, NULL, SDL_FLIP_NONE);
                     if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
                         if (!bullets[i + 1][j]) bullets[i + 1][j] = 3;
                         else bullets[i + 1][j] = 0;
                     }
                     else if (i < N - 1 && (map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9 || (map[i + 1][j] == 10 && pu == 6))) { //!!!
                         map[i + 1][j] = 2;
-                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        explosion[i + 1][j] = 12;
                         SDL_Delay(50);
                     }
                     else if (i < N - 1 && !(map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9)) {
-                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        explosion[i + 1][j] = 12;
                         SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
                     break;
                 case 4:
                     if(j < N - 1 && enemies[i][j+1]){
-                        kill_enemy(i, j+1, map, enemies, renderer);
+                        kill_enemy(i, j+1, map, enemies, renderer, explosion);
                         bullets[i][j + 1] = 1;
                     }
                     else if(i ==  tank.x / tile_size && j+1 == tank.y / tile_size){
                         kill_player(N, tile_size, pu);
                     }
-                    SDL_RenderCopy(renderer, bullet_t, &select_tile, &tile[i][j]);
-                    explosion_rect.x = tile[i][j + 1].x - tile_size / 2;
-                    explosion_rect.y = tile[i][j + 1].y - tile_size / 2;
-                    explosion_rect.w = tile_size;
-                    explosion_rect.h = tile_size;
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 180, NULL, SDL_FLIP_NONE);
                     if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)){
                         if(!bullets[i][j + 1]) bullets[i][j + 1] = 4;
                         else bullets[i][j + 1] = 0;
                     }
                     else if (j < N - 1 && (map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9 || (map[i][j + 1] == 10 && pu == 6))) { //!!!
                         map[i][j + 1] = 2;
-                        SDL_RenderCopy(renderer, explosion_t, NULL, &explosion_rect);
+                        explosion[i][j + 1] = 12;
                         SDL_Delay(50);
                     }
                     else if (j < N - 1 && !(map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9)) {
-                        SDL_RenderCopy(renderer, explosion2_t, NULL, &explosion_rect);
+                        explosion[i][j + 1] = 12;
                         SDL_Delay(50);
                     }
                     bullets[i][j] = 0;
@@ -378,11 +349,9 @@ void shoot(SDL_Renderer *renderer, int **bullets, int tile_size, int **map, int 
         }
     }
 
-    SDL_DestroyTexture(explosion_t);
-    SDL_DestroyTexture(bullet_t);
 }
 
-void startPu(int *power_up, int **map, int *last_pu, int *pu_placed, int *pu_x, int *pu_y, int *pu_started, int *pu_placed_time, int **enemies, SDL_Renderer *renderer){
+void startPu(int *power_up, int **map, int *last_pu, int *pu_placed, int *pu_x, int *pu_y, int *pu_started, int *pu_placed_time, int **enemies, SDL_Renderer *renderer, int **explosion){
     *power_up = *pu_placed;
     *last_pu = (int)(SDL_GetTicks());
     *pu_started = (int)(SDL_GetTicks());
@@ -401,7 +370,7 @@ void startPu(int *power_up, int **map, int *last_pu, int *pu_placed, int *pu_x, 
         for(int i = 0;i<N;i++){
             for(int j = 0;j<N;j++){
                 if(enemies[i][j]){
-                    kill_enemy(i, j, map, enemies, renderer);
+                    kill_enemy(i, j, map, enemies, renderer, explosion);
                 }
             }
         }
@@ -727,42 +696,117 @@ void powerUp(int *power_up, int *pu_started, int *last_pu, int *pu_placed_time, 
     }
 }
 
-void drawPowerUp(SDL_Renderer *renderer, int **map, int tile_size, int pu_x, int pu_y,int pu_placed){ // nacrta mocku na tablu
-    // 1 - bomba, 2 - sat, 3 - stit, 4 - zvezda
-    // 5 - dve zvezde, 6 - tri zvezde, 7 - lopata, 8 - srce
-    if(pu_placed){
+void draw_explosion(SDL_Renderer *renderer, int N, int **explosion, int tile_size) {
+    SDL_Surface *explosion_s = SDL_LoadBMP("images/explosion.bmp");
+    SDL_Texture *explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
+    SDL_FreeSurface(explosion_s);
+
+    SDL_Rect tile[N][N];
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            tile[i][j].x = i * tile_size;
+            tile[i][j].y = j * tile_size;
+            tile[i][j].w = tile_size;
+            tile[i][j].h = tile_size;
+        }
+    }
+
+    SDL_Rect select_tile;
+    select_tile.w = 96;
+    select_tile.h = 96;
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (explosion[i][j] > 0) {
+                select_tile.x = (12 - explosion[i][j]) * 96;
+                select_tile.y = 0;
+                SDL_RenderCopy(renderer, explosion_t, &select_tile, &tile[i][j]);
+                explosion[i][j]--;
+            }
+        }
+    }
+    SDL_DestroyTexture(explosion_t);
+}
+
+void drawPowerUp(SDL_Renderer *renderer, int **map, int tile_size, int pu_x, int pu_y, int pu_placed, Uint32 pu_placed_time, Uint32 current_time) {
+    if (pu_placed) {
         SDL_Surface *pu_s = NULL;
-        if(pu_placed == 1) {
-            pu_s = SDL_LoadBMP("images/bomb.bmp");
-        }
-        else if(pu_placed == 2) {
-            pu_s = SDL_LoadBMP("images/time.bmp");
-        }
-        else if(pu_placed == 3) {
-            pu_s = SDL_LoadBMP("images/shield.bmp");
-        }
-        else if(pu_placed == 4) {
-            pu_s = SDL_LoadBMP("images/one.bmp");
-        }
-        else if(pu_placed == 5) {
-            pu_s = SDL_LoadBMP("images/two.bmp");
-        }
-        else if(pu_placed == 6) {
-            pu_s = SDL_LoadBMP("images/three.bmp");
-        }
-        else if(pu_placed == 7) {
-            pu_s = SDL_LoadBMP("images/shovel.bmp");
-        }
-        else {
-            pu_s = SDL_LoadBMP("images/life.bmp");
+        switch (pu_placed) {
+            case 1: pu_s = SDL_LoadBMP("images/bomb.bmp"); break;
+            case 2: pu_s = SDL_LoadBMP("images/time.bmp"); break;
+            case 3: pu_s = SDL_LoadBMP("images/shield.bmp"); break;
+            case 4: pu_s = SDL_LoadBMP("images/one.bmp"); break;
+            case 5: pu_s = SDL_LoadBMP("images/two.bmp"); break;
+            case 6: pu_s = SDL_LoadBMP("images/three.bmp"); break;
+            case 7: pu_s = SDL_LoadBMP("images/shovel.bmp"); break;
+            case 8: pu_s = SDL_LoadBMP("images/life.bmp"); break;
         }
         SDL_Texture *pu_t = SDL_CreateTextureFromSurface(renderer, pu_s);
         SDL_FreeSurface(pu_s);
-        SDL_Rect rect = {pu_x * tile_size, pu_y * tile_size, tile_size, tile_size};
-        SDL_RenderCopy(renderer, pu_t, NULL, &rect);
+
+        Uint32 elapsed = current_time - pu_placed_time;
+        Uint32 remaining_time = 10000 - elapsed;
+
+        bool visible = true;
+        if (remaining_time < 3000) {
+            if ((remaining_time / 300) % 2 == 0) {
+                visible = false;
+            }
+        }
+
+        if (visible) {
+            SDL_Rect rect = {pu_x * tile_size, pu_y * tile_size, tile_size, tile_size};
+            SDL_RenderCopy(renderer, pu_t, NULL, &rect);
+        }
+
         SDL_DestroyTexture(pu_t);
     }
 }
+
+void drawHUD(SDL_Renderer *renderer, int power_up, int tile_size, int lives, int N) {
+    SDL_Surface *bg_s = SDL_LoadBMP("images/bg.bmp");
+    SDL_Texture *bg_t = SDL_CreateTextureFromSurface(renderer, bg_s);
+    SDL_FreeSurface(bg_s);
+
+    SDL_Rect right_hud_rect = {N * tile_size, 0, tile_size * 3, (N + 1) * tile_size};
+    SDL_RenderCopy(renderer, bg_t, NULL, &right_hud_rect);
+    SDL_DestroyTexture(bg_t);
+
+    SDL_Surface *heart_s = SDL_LoadBMP("images/life.bmp");
+    SDL_Texture *heart_t = SDL_CreateTextureFromSurface(renderer, heart_s);
+    SDL_FreeSurface(heart_s);
+    int heart_size = tile_size / 2;
+    for (int i = 0; i < lives; i++) {
+        SDL_Rect heart_rect = {N * tile_size + tile_size + (i % 2) * heart_size, (i / 2) * heart_size + 10, heart_size, heart_size};
+        SDL_RenderCopy(renderer, heart_t, NULL, &heart_rect);
+    }
+    SDL_DestroyTexture(heart_t);
+
+    SDL_Rect pu_border_rect = {N * tile_size + tile_size - 2, tile_size + 20, tile_size + 4, tile_size + 4};
+    SDL_Rect line = {N * tile_size, 0, 5, (N + 1) * tile_size};
+    SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);
+    SDL_RenderFillRect(renderer, &line);
+
+    SDL_Surface *pu_s = NULL;
+    switch (power_up) {
+        case 1: pu_s = SDL_LoadBMP("images/bomb.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 2: pu_s = SDL_LoadBMP("images/time.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 3: pu_s = SDL_LoadBMP("images/shield.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 4: pu_s = SDL_LoadBMP("images/one.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 5: pu_s = SDL_LoadBMP("images/two.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 6: pu_s = SDL_LoadBMP("images/three.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+        case 7: pu_s = SDL_LoadBMP("images/shovel.bmp"); SDL_RenderFillRect(renderer, &pu_border_rect); break;
+    }
+    if (pu_s != NULL) {
+        SDL_Texture *pu_t = SDL_CreateTextureFromSurface(renderer, pu_s);
+        SDL_FreeSurface(pu_s);
+        SDL_Rect pu_rect = {N * tile_size + tile_size, tile_size + 22, tile_size, tile_size};
+        SDL_RenderCopy(renderer, pu_t, NULL, &pu_rect);
+        SDL_DestroyTexture(pu_t);
+    }
+}
+
+
 
 int main(int argc, char* argv[]) {
     SDL_Window *window = NULL;
@@ -776,8 +820,9 @@ int main(int argc, char* argv[]) {
 
     int size = current.h / SIZE * SIZE;
     int tile_size = size / N;
-    window = SDL_CreateWindow("Battle Tank", SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED,
-                              size, size, SDL_WINDOW_SHOWN);
+    int hud_width = 3 * tile_size;  // širina za HUD
+    window = SDL_CreateWindow("Battle Tank", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                              size + hud_width, size, SDL_WINDOW_SHOWN);
     if (!(int)window) {
         perror("Greska u kreiranju prozora.");
         SDL_Quit();
@@ -806,6 +851,10 @@ int main(int argc, char* argv[]) {
     int **enemies = calloc(N, sizeof (int*));
     for (int i = 0; i < N; i++)
         enemies[i] = calloc(N, sizeof (int));
+
+    int **explosion = calloc(N, sizeof (int*));
+    for (int i = 0; i < N; i++)
+        explosion[i] = calloc(N, sizeof (int));
 
     int **directions  = calloc(N, sizeof(int*));
     for (int i = 0; i<N; i++)
@@ -836,70 +885,62 @@ int main(int argc, char* argv[]) {
 
     int game = 1;
     int dir = -1; //0 levo, 1 gore, 2 desno, 3 dole
-    while (game){
+    while (game) {
         SDL_Event event;
-        while (SDL_PollEvent(&event)){
+        while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 game = 0;
-            }
-            else if (event.type == SDL_KEYDOWN){
-                if (event.key.keysym.sym == SDLK_LEFT){
+            } else if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_LEFT) {
                     dir = 0;
                     strcpy(curr_tank, "images/tank0.bmp");
-                }
-                else if (event.key.keysym.sym == SDLK_UP){
+                } else if (event.key.keysym.sym == SDLK_UP) {
                     dir = 1;
                     strcpy(curr_tank, "images/tank1.bmp");
-                }
-                else if (event.key.keysym.sym == SDLK_RIGHT){
+                } else if (event.key.keysym.sym == SDLK_RIGHT) {
                     dir = 2;
                     strcpy(curr_tank, "images/tank2.bmp");
-                }
-                else if (event.key.keysym.sym == SDLK_DOWN){
+                } else if (event.key.keysym.sym == SDLK_DOWN) {
                     dir = 3;
                     strcpy(curr_tank, "images/tank3.bmp");
-                }
-                else if (event.key.keysym.sym == SDLK_SPACE){
+                } else if (event.key.keysym.sym == SDLK_SPACE) {
                     Uint32 curr_time = SDL_GetTicks();
                     if (curr_time - last_shot > shoot_cooldown) {
                         int x = tank.x / tank.w;
                         int y = tank.y / tank.w;
                         bullets[x][y] = curr_tank[11] - '0' + 1;
-                        if(power_up == 5){
-                            if(curr_tank[11] - '0' == 0){
-                                if(x > 0 && map[x - 1][y] > 1 && map[x - 1][y] < 7){
-                                    if(enemies[x - 1][y]){
-                                        kill_enemy(x - 1, y, map, enemies, renderer);
-                                    }
-                                    else
+                        if (power_up == 5) {
+                            if (curr_tank[11] - '0' == 0) {
+                                if (x > 0 && map[x - 1][y] > 1 && map[x - 1][y] < 7) {
+                                    if (enemies[x - 1][y]) {
+                                        kill_enemy(x - 1, y, map, enemies, renderer, explosion);
+                                    } else {
                                         bullets[x - 1][y] = curr_tank[11] - '0' + 1;
-                                }
-                            }
-                            else if(curr_tank[11] - '0' == 1){
-                                if(y > 0 && map[x][y - 1] > 1 && map[x][y - 1] < 7){
-                                    if(enemies[x][y - 1]){
-                                        kill_enemy(x, y - 1, map, enemies, renderer);
                                     }
-                                    else
+                                }
+                            } else if (curr_tank[11] - '0' == 1) {
+                                if (y > 0 && map[x][y - 1] > 1 && map[x][y - 1] < 7) {
+                                    if (enemies[x][y - 1]) {
+                                        kill_enemy(x, y - 1, map, enemies, renderer, explosion);
+                                    } else {
                                         bullets[x][y - 1] = curr_tank[11] - '0' + 1;
-                                }
-                            }
-                            else if(curr_tank[11] - '0' == 2){ //!!!
-                                if(x < N-1 && map[x][y] > 1 && map[x + 1][y] < 7){
-                                    if(enemies[x + 1][y]){
-                                        kill_enemy(x + 1, y, map, enemies, renderer);
                                     }
-                                    else
+                                }
+                            } else if (curr_tank[11] - '0' == 2) {
+                                if (x < N - 1 && map[x][y] > 1 && map[x + 1][y] < 7) {
+                                    if (enemies[x + 1][y]) {
+                                        kill_enemy(x + 1, y, map, enemies, renderer, explosion);
+                                    } else {
                                         bullets[x + 1][y] = curr_tank[11] - '0' + 1;
-                                }
-                            }
-                            else {
-                                if(y < N-1 && map[x][y + 1] > 1 && map[x][y + 1] < 7){
-                                    if(enemies[x][y + 1]){
-                                        kill_enemy(x, y + 1, map, enemies, renderer);
                                     }
-                                    else
+                                }
+                            } else {
+                                if (y < N - 1 && map[x][y + 1] > 1 && map[x][y + 1] < 7) {
+                                    if (enemies[x][y + 1]) {
+                                        kill_enemy(x, y + 1, map, enemies, renderer, explosion);
+                                    } else {
                                         bullets[x][y + 1] = curr_tank[11] - '0' + 1;
+                                    }
                                 }
                             }
                         }
@@ -908,25 +949,28 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-        generate_map(renderer, N, map, tile_size);
-        shoot(renderer, bullets, tile_size, map, enemies, power_up);
+        generate_map(renderer, map, tile_size);
+        shoot(renderer, bullets, tile_size, map, enemies, power_up, explosion);
+        draw_explosion(renderer, N, explosion, tile_size);
         powerUp(&power_up, &pu_started, &last_pu, &pu_placed_time, map, &pu_x, &pu_y, &pu_placed, enemies, renderer);
-        drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed);
-        move_tank(renderer, N, map, dir, enemies);
+        drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed, pu_placed_time, SDL_GetTicks());
+        move_tank(renderer, map, dir, enemies);
 
         Uint32 curr_time = SDL_GetTicks();
         if (curr_time - last_spawn > spawn_time) {
             spawn_enemies(N, enemies, 2);
             last_spawn = curr_time;
         }
-        if (curr_time - last_move > enemy_speed && power_up!=2) {
+        if (curr_time - last_move > enemy_speed && power_up != 2) {
             update_enemy_pos(map, enemies, directions, N, 2, tank.x, tank.y);
             last_move = curr_time;
         }
-        if(tank.x / tank.w == pu_x && tank.y / tank.w == pu_y){
-            startPu(&power_up, map, &last_pu, &pu_placed, &pu_x, &pu_y, &pu_started, &pu_placed_time, enemies, renderer);
+        if (tank.x / tank.w == pu_x && tank.y / tank.w == pu_y) {
+            startPu(&power_up, map, &last_pu, &pu_placed, &pu_x, &pu_y, &pu_started, &pu_placed_time, enemies, renderer, explosion);
         }
         generate_enemy(renderer, N, enemies, tile_size);
+        drawHUD(renderer, power_up, tile_size, lives, N);
+
         dir = -1;
         SDL_RenderPresent(renderer);
         SDL_Delay(20);
