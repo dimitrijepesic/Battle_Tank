@@ -3,17 +3,22 @@
 #include <SDL.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <math.h>
 
 #define SIZE 300
 
 static char curr_tank[50] = "images/tank1.bmp";
-int score = 0, lives = 2, tanks_left = 15, N = 10;
+static char diff[50] = "images/lako.bmp";
+static char mapsize[50] = "images/10.bmp";
+int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10;
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0;
-Uint32 enemy_speed = 500;
+Uint32 enemy_speed = 600;
 Uint32 spawn_time = 5000, last_spawn = 0;
 SDL_Rect tank;
+SDL_Rect meni_rect, zavrsi_rect;
+
 static int redosled = 0;
 
 typedef struct node {
@@ -136,7 +141,7 @@ void generate_map(SDL_Renderer *renderer, int **map, int tile_size){
 }
 
 
-void make_map(int N, int **map){
+void make_map(int **map){
     srand(time(NULL));
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -198,6 +203,7 @@ void move_tank(SDL_Renderer *renderer, int **map, int dir, int **enemies){
     SDL_DestroyTexture(tank_t);
 }
 void game_over(){
+    exist = 0;
     // ovde treba da se prekine igra i ukljuci pocetni meni, prikazu high score - ovi...
     // to cemo kasnije
 }
@@ -383,7 +389,7 @@ void startPu(int *power_up, int **map, int *last_pu, int *pu_placed, int *pu_x, 
     }
 }
 
-void generate_enemy(SDL_Renderer *renderer, int N, int **enemies, int tile_size) {
+void generate_enemy(SDL_Renderer *renderer, int **enemies, int tile_size) {
     // 1 - obican gleda levo, 2 - obican gleda napred, 3 - obican gleda desno, 4 - obican gleda dole
     // 5 - specijalni gleda levo, 6 - specijalni gleda napred, 7 - specijalni gleda desno, 8 - specijalni gleda dole
 
@@ -500,16 +506,15 @@ void random_next(int x, int y, int xnas, int ynas, int **map, int **enemies, int
         int idx = indices[i];
         int nx = x + move[idx][0];
         int ny = y + move[idx][1];
-
         if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
             not_in(map[nx][ny], val, val_length) &&
             enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas)) {
-            next[0] = nx;
-            next[1] = ny;
-            *dir = idx;
-            return;
+                next[0] = nx;
+                next[1] = ny;
+                *dir = idx;
+                return;
+            }
         }
-    }
 }
 
 void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int **map, int **enemies, int next[2], int *dir) {
@@ -533,7 +538,7 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int **map,
     visited[x][y] = 0;
 
     int move[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-    Queue fmove = {x,y}; // stavljam pocetni potez na invalid
+    Queue fmove = {x, y}; // stavljam pocetni potez na invalid
 
     while (front != rear) {
         Queue curr = queue[front++];
@@ -546,7 +551,6 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int **map,
         for (int i = 0; i < 4; i++) {
             int nx = curr.x + move[i][0];
             int ny = curr.y + move[i][1];
-
             if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
                 not_in(map[nx][ny], val, val_length) &&
                 visited[nx][ny] == -1 &&
@@ -563,7 +567,6 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int **map,
     }
 
     next[0] = fmove.x; next[1] = fmove.y;
-
 
     for (int i = 0; i < N; i++) {
         free(visited[i]);
@@ -596,7 +599,7 @@ int tank_optioning(int diff){
     }
 }
 
-void spawn_enemies(int N, int **enemies, int diff){
+void spawn_enemies(int **enemies, int diff){
     int spawn_points[2][2] = {{0,0}, {N-1,0}};
     int typee[] = {0,1}; // 0 - obican, 1 - spec
     for (int i=0; i<2; i++){
@@ -686,7 +689,6 @@ void update_enemy_pos(int **map, int **enemies, int N, int diff, int x_tar, int 
                         }
                     }
                 }
-
             }
         }
     }
@@ -712,7 +714,7 @@ void powerUp(int *power_up, int *pu_started, int *last_pu, int *pu_placed_time, 
             case 1: // ubij sve neprijatelje
             case 2: // zaledi neprijatelje
             case 3: // stit
-            case 5: // zvezda 2
+            case 5: //zvezda 2
             case 6: // zvezda 3
                 if(SDL_GetTicks() > *pu_started + 15000){
                     *pu_started = 0;
@@ -757,7 +759,7 @@ void powerUp(int *power_up, int *pu_started, int *last_pu, int *pu_placed_time, 
     }
 }
 
-void draw_explosion(SDL_Renderer *renderer, int N, int **explosion, int tile_size) {
+void draw_explosion(SDL_Renderer *renderer, int **explosion, int tile_size) {
     SDL_Surface *explosion_s = SDL_LoadBMP("images/explosion.bmp");
     SDL_Texture *explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
     SDL_FreeSurface(explosion_s);
@@ -824,28 +826,28 @@ void drawPowerUp(SDL_Renderer *renderer, int **map, int tile_size, int pu_x, int
     }
 }
 
-void drawHUD(SDL_Renderer *renderer, int power_up, int tile_size, int lives, int N) {
+void drawHUD(SDL_Renderer *renderer, int power_up, int tile_size, bool meni_hover, bool zavrsi_hover, int size) {
     SDL_Surface *bg_s = SDL_LoadBMP("images/bg.bmp");
     SDL_Texture *bg_t = SDL_CreateTextureFromSurface(renderer, bg_s);
     SDL_FreeSurface(bg_s);
 
-    SDL_Rect right_hud_rect = {N * tile_size, 0, tile_size * 3, (N + 1) * tile_size};
+    SDL_Rect right_hud_rect = {N * tile_size, 0, size, (N + 1) * tile_size};
     SDL_RenderCopy(renderer, bg_t, NULL, &right_hud_rect);
     SDL_DestroyTexture(bg_t);
 
     SDL_Surface *heart_s = SDL_LoadBMP("images/life.bmp");
     SDL_Texture *heart_t = SDL_CreateTextureFromSurface(renderer, heart_s);
     SDL_FreeSurface(heart_s);
-    int heart_size = tile_size / 2;
+    int heart_size = size / 10;
     for (int i = 0; i < lives; i++) {
-        SDL_Rect heart_rect = {N * tile_size + tile_size + (i % 2) * heart_size, (i / 2) * heart_size + 10, heart_size, heart_size};
+        SDL_Rect heart_rect = {N * tile_size + size / 3 + (i % 3) * heart_size, (i / 3) * heart_size + 20, heart_size, heart_size};
         SDL_RenderCopy(renderer, heart_t, NULL, &heart_rect);
     }
     SDL_DestroyTexture(heart_t);
 
-    SDL_Rect pu_border_rect = {N * tile_size + tile_size - 2, tile_size + 20, tile_size + 4, tile_size + 4};
+    SDL_Rect pu_border_rect = {N * tile_size + size / 3, size / 2, size / 5 + 4, size / 5 + 4};
     SDL_Rect line = {N * tile_size, 0, 5, (N + 1) * tile_size};
-    SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);
+    SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
     SDL_RenderFillRect(renderer, &line);
 
     SDL_Surface *pu_s = NULL;
@@ -861,13 +863,458 @@ void drawHUD(SDL_Renderer *renderer, int power_up, int tile_size, int lives, int
     if (pu_s != NULL) {
         SDL_Texture *pu_t = SDL_CreateTextureFromSurface(renderer, pu_s);
         SDL_FreeSurface(pu_s);
-        SDL_Rect pu_rect = {N * tile_size + tile_size, tile_size + 22, tile_size, tile_size};
+        SDL_Rect pu_rect = {N * tile_size + size / 3 + 2, size / 2 + 2, size / 5, size / 5};
         SDL_RenderCopy(renderer, pu_t, NULL, &pu_rect);
         SDL_DestroyTexture(pu_t);
     }
+
+    meni_rect = (SDL_Rect){N * tile_size + size / 6, N * tile_size - 3 * size / 5 + 3, size / 3 * 2, size / 5 - 6};
+    zavrsi_rect = (SDL_Rect){N * tile_size + size / 6, N * tile_size - 2 * size / 5 + 3, size / 3 * 2, size / 5 - 6};
+
+    if (meni_hover){
+        SDL_SetRenderDrawColor(renderer, 190, 190, 190, 100);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
+    }
+    SDL_RenderFillRect(renderer, &meni_rect);
+
+    if (zavrsi_hover){
+        SDL_SetRenderDrawColor(renderer, 190, 190, 190, 100);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
+    }
+    SDL_RenderFillRect(renderer, &zavrsi_rect);
+
+
+    SDL_Surface *hudr_s = SDL_LoadBMP("images/hudr.bmp");
+    SDL_Texture *hudr_t = SDL_CreateTextureFromSurface(renderer, hudr_s);
+    SDL_FreeSurface(hudr_s);
+    SDL_Rect hudr_rect = {N * tile_size + meni_rect.w / 4, N * tile_size - 3 * size / 5, meni_rect.w, 2 * size / 5};
+    SDL_RenderCopy(renderer, hudr_t, NULL, &hudr_rect);
+    SDL_DestroyTexture(hudr_t);
 }
 
+void start_animation(SDL_Renderer *renderer, int window_width, int window_height) {
+    SDL_Texture *textures[55];
+    char filename[50];
+    for (int i = 0; i < 55; i++) {
+        sprintf(filename, "images/tank_%03d.bmp", i);
+        SDL_Surface *frame = SDL_LoadBMP(filename);
+        textures[i] = SDL_CreateTextureFromSurface(renderer, frame);
+        SDL_FreeSurface(frame);
+    }
+    SDL_Rect render_quad = {0, 0, window_width, window_height};
+    Uint32 start_time = SDL_GetTicks();
+    Uint32 current_time;
+    int frame_duration = 70;
+    while (1) {
+        current_time = SDL_GetTicks();
+        if (current_time - start_time > 3850) {
+            break;
+        }
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        int frame_index = (current_time - start_time) / frame_duration;
+        SDL_RenderCopy(renderer, textures[frame_index], NULL, &render_quad);
+        SDL_RenderPresent(renderer);
+        SDL_Delay(20);
+    }
+    for (int i = 0; i < 55; i++) {
+        SDL_DestroyTexture(textures[i]);
+    }
+}
 
+void set_game(int ***map, int ***enemies, int ***explosion, int ***directions, int ***bonuses, int ***bullets, int *power_up,
+              int *pu_started, int *last_pu, int *pu_placed_time, int *pu_x, int *pu_y, int *pu_placed, int *game, int *dir,
+              int *tile_size, SDL_Renderer *renderer, SDL_Window *window, int *size) {
+
+    SDL_DisplayMode current;
+    SDL_GetCurrentDisplayMode(0, &current);
+    *size = current.h / SIZE * SIZE;
+    *tile_size = *size / N;
+
+    strcpy(curr_tank, "images/tank1.bmp");
+    score = 0, lives = 2, tanks_left = bot_difficulty;
+    *map = (int **)calloc(N, sizeof(int *));
+    if (*map == NULL) {
+        perror("Greska u alokaciji memorije za mapu.");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+    for (int i = 0; i < N; i++)
+        (*map)[i] = (int *)calloc(N, sizeof(int));
+    make_map(*map);
+
+    *enemies = (int **)calloc(N, sizeof(int *));
+    for (int i = 0; i < N; i++)
+        (*enemies)[i] = (int *)calloc(N, sizeof(int));
+
+    *explosion = (int **)calloc(N, sizeof(int *));
+    for (int i = 0; i < N; i++)
+        (*explosion)[i] = (int *)calloc(N, sizeof(int));
+
+    *directions = (int **)calloc(N, sizeof(int *));
+    for (int i = 0; i < N; i++)
+        (*directions)[i] = (int *)calloc(N, sizeof(int));
+
+    *bonuses = (int **)calloc(N, sizeof(int *));
+    for (int i = 0; i < N; i++)
+        (*bonuses)[i] = (int *)calloc(N, sizeof(int));
+
+    *bullets = (int **)calloc(N, sizeof(int *));
+    if (*bullets == NULL) {
+        perror("Greska u alokaciji memorije za metkove.");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+    for (int i = 0; i < N; i++)
+        (*bullets)[i] = (int *)calloc(N, sizeof(int));
+
+    tank.x = N / 2 * *tile_size;
+    tank.y = (N - 3) * *tile_size;
+    tank.w = *tile_size;
+    tank.h = *tile_size;
+
+    *power_up = 0;
+    *pu_started = 0;
+    *last_pu = 0;
+    *pu_placed_time = 0;
+    *pu_x = -1;
+    *pu_y = -1;
+    *pu_placed = 0;
+
+    *game = 1;
+    *dir = -1; // 0 levo, 1 gore, 2 desno, 3 dole
+}
+
+void draw_settings(SDL_Renderer *renderer, int window_width, int window_height, int ***map, int ***enemies, int ***explosion, int ***directions,
+                   int ***bonuses, int ***bullets, int *power_up, int *pu_started, int *last_pu, int *pu_placed_time,
+                   int *pu_x, int *pu_y, int *pu_placed, int *game, int *dir, int *tile_size, SDL_Window *window,
+                   int *size) {
+
+    SDL_Cursor *hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    SDL_Cursor *arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+
+    SDL_Surface *leftarrow_s = SDL_LoadBMP("images/leftarrow.bmp");
+    SDL_Texture *leftarrow_t = SDL_CreateTextureFromSurface(renderer, leftarrow_s);
+    SDL_FreeSurface(leftarrow_s);
+    SDL_Surface *rightarrow_s = SDL_LoadBMP("images/rightarrow.bmp");
+    SDL_Texture *rightarrow_t = SDL_CreateTextureFromSurface(renderer, rightarrow_s);
+    SDL_FreeSurface(rightarrow_s);
+    SDL_Surface *potvrdi_s = SDL_LoadBMP("images/potvrdi.bmp");
+    SDL_Texture *potvrdi_t = SDL_CreateTextureFromSurface(renderer, potvrdi_s);
+    SDL_Surface *difficulty_s = SDL_LoadBMP(diff);
+    SDL_Texture *difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
+    SDL_Surface *velicina_mape_s = SDL_LoadBMP("images/vm.bmp");
+    SDL_Texture *velicina_mape_t = SDL_CreateTextureFromSurface(renderer, velicina_mape_s);
+    SDL_FreeSurface(velicina_mape_s);
+    SDL_Surface *tezina_botova_s = SDL_LoadBMP("images/tb.bmp");
+    SDL_Texture *tezina_botova_t = SDL_CreateTextureFromSurface(renderer, tezina_botova_s);
+    SDL_FreeSurface(tezina_botova_s);
+    SDL_Surface *map_size_s = SDL_LoadBMP(mapsize);
+    SDL_Texture *map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+
+    bool running = true;
+    bool hover1 = false, hover2 = false, hover3 = false, hover4 = false, hover5 = false;
+    while (running){
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        SDL_Rect tb_rect = { (window_width - *size) / 4, window_height / 4, *size / 2, *size / 12 };
+        SDL_RenderCopy(renderer, tezina_botova_t, NULL, &tb_rect);
+
+        SDL_Rect difficulty_rect = { tb_rect.x + tb_rect.w + *size / 4, tb_rect.y, *size / 3, *size / 12 };
+        SDL_RenderCopy(renderer, difficulty_t, NULL, &difficulty_rect);
+        SDL_Rect leftarrow1_rect = { difficulty_rect.x - 50, difficulty_rect.y, 50, 50 };
+        SDL_RenderCopy(renderer, leftarrow_t, NULL, &leftarrow1_rect);
+        SDL_Rect rightarrow1_rect = { difficulty_rect.x + difficulty_rect.w, difficulty_rect.y, 50, 50 };
+        SDL_RenderCopy(renderer, rightarrow_t, NULL, &rightarrow1_rect);
+
+        SDL_Rect vm_rect = { (window_width - *size) / 4, window_height / 2, *size / 2, *size / 12 };
+        SDL_RenderCopy(renderer, velicina_mape_t, NULL, &vm_rect);
+
+        SDL_Rect map_size_rect = { vm_rect.x + vm_rect.w + *size / 4, vm_rect.y, *size / 9, *size / 12 };
+        SDL_RenderCopy(renderer, map_size_t, NULL, &map_size_rect);
+        SDL_Rect leftarrow2_rect = { map_size_rect.x - 50, map_size_rect.y, 50, 50 };
+        SDL_RenderCopy(renderer, leftarrow_t, NULL, &leftarrow2_rect);
+        SDL_Rect rightarrow2_rect = { map_size_rect.x + map_size_rect.w, map_size_rect.y, 50, 50 };
+        SDL_RenderCopy(renderer, rightarrow_t, NULL, &rightarrow2_rect);
+
+        SDL_Rect potvrdi_rect = { (window_width - 200) / 2, (3 * window_height) / 4, 200, 50 };
+        SDL_RenderCopy(renderer, potvrdi_t, NULL, &potvrdi_rect);
+        SDL_RenderPresent(renderer);
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                SDL_Quit();
+                exit(0);
+            } else if (event.type == SDL_MOUSEMOTION) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                hover1 = SDL_PointInRect(&(SDL_Point){x, y}, &leftarrow1_rect);
+                hover2 = SDL_PointInRect(&(SDL_Point){x, y}, &rightarrow1_rect);
+                hover3 = SDL_PointInRect(&(SDL_Point){x, y}, &leftarrow2_rect);
+                hover4 = SDL_PointInRect(&(SDL_Point){x, y}, &rightarrow2_rect);
+                hover5 = SDL_PointInRect(&(SDL_Point){x, y}, &potvrdi_rect);
+
+                if (hover1 || hover2 || hover3 || hover4 || hover5) {
+                    SDL_SetCursor(hand_cursor);
+                } else {
+                    SDL_SetCursor(arrow_cursor);
+                }
+                if (hover5){
+                    potvrdi_s = SDL_LoadBMP("images/potvrdis.bmp");
+                    potvrdi_t = SDL_CreateTextureFromSurface(renderer, potvrdi_s);
+                }
+                else{
+                    potvrdi_s = SDL_LoadBMP("images/potvrdi.bmp");
+                    potvrdi_t = SDL_CreateTextureFromSurface(renderer, potvrdi_s);
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                if (SDL_PointInRect(&(SDL_Point){x, y}, &leftarrow1_rect)) {
+                    if (bot_difficulty == 15){
+                        strcpy(diff, "images/lako.bmp");
+                        difficulty_s = SDL_LoadBMP(diff);
+                        difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
+                        bot_difficulty = 10;
+                        enemy_speed = 600;
+                        exist  = 0;
+                    }
+                    else if (bot_difficulty == 20){
+                        strcpy(diff, "images/srednje.bmp");
+                        difficulty_s = SDL_LoadBMP(diff);
+                        difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
+                        bot_difficulty = 15;
+                        enemy_speed = 500;
+                        exist  = 0;
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &rightarrow1_rect)) {
+                    if (bot_difficulty == 10){
+                        strcpy(diff, "images/srednje.bmp");
+                        difficulty_s = SDL_LoadBMP(diff);
+                        difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
+                        bot_difficulty = 15;
+                        enemy_speed = 500;
+                        exist  = 0;
+                    }
+                    else if (bot_difficulty == 15){
+                        strcpy(diff, "images/tesko.bmp");
+                        difficulty_s = SDL_LoadBMP(diff);
+                        difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
+                        bot_difficulty = 20;
+                        enemy_speed = 400;
+                        exist  = 0;
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &leftarrow2_rect)) {
+                    if (N == 15){
+                        strcpy(mapsize, "images/10.bmp");
+                        map_size_s = SDL_LoadBMP(mapsize);
+                        map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+                        N = 10;
+                        exist = 0;
+                    }
+                    else if (N == 20){
+                        strcpy(mapsize, "images/15.bmp");
+                        map_size_s = SDL_LoadBMP(mapsize);
+                        map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+                        N = 15;
+                        exist = 0;
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &rightarrow2_rect)) {
+                    if (N == 10){
+                        strcpy(mapsize, "images/15.bmp");
+                        map_size_s = SDL_LoadBMP(mapsize);
+                        map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+                        N = 15;
+                        exist = 0;
+                    }
+                    else if (N == 15){
+                        strcpy(mapsize, "images/20.bmp");
+                        map_size_s = SDL_LoadBMP(mapsize);
+                        map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+                        N = 20;
+                        exist = 0;
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &potvrdi_rect)) {
+                    SDL_DisplayMode current;
+                    SDL_GetCurrentDisplayMode(0, &current);
+                    *size = current.h / SIZE * SIZE;
+                    *tile_size = *size / N;
+
+                    set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
+                             pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
+                             dir, tile_size, renderer, window, size);
+                    running = false;
+                }
+            }
+        }
+    }
+
+    SDL_FreeSurface(difficulty_s);
+    SDL_FreeSurface(map_size_s);
+    SDL_FreeSurface(potvrdi_s);
+
+    SDL_DestroyTexture(leftarrow_t);
+    SDL_DestroyTexture(rightarrow_t);
+    SDL_DestroyTexture(potvrdi_t);
+    SDL_DestroyTexture(difficulty_t);
+    SDL_DestroyTexture(velicina_mape_t);
+    SDL_DestroyTexture(tezina_botova_t);
+    SDL_DestroyTexture(map_size_t);
+}
+
+void draw_menu(SDL_Renderer *renderer, int window_width, int window_height, int ***map, int ***enemies, int ***explosion, int ***directions,
+               int ***bonuses, int ***bullets, int *power_up, int *pu_started, int *last_pu, int *pu_placed_time,
+               int *pu_x, int *pu_y, int *pu_placed, int *game, int *dir, int *tile_size, SDL_Window *window,
+               int *size) {
+    SDL_Cursor *hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    SDL_Cursor *arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+
+    SDL_Surface *bt_s = SDL_LoadBMP("images/bt.bmp");
+    SDL_Texture *bt_t = SDL_CreateTextureFromSurface(renderer, bt_s);
+    SDL_FreeSurface(bt_s);
+    SDL_Surface *ni_s = SDL_LoadBMP("images/novaigra.bmp");
+    SDL_Texture *ni_t = SDL_CreateTextureFromSurface(renderer, ni_s);
+    SDL_FreeSurface(ni_s);
+    SDL_Surface *n_s = SDL_LoadBMP("images/nastavi.bmp");
+    SDL_Texture *n_t = SDL_CreateTextureFromSurface(renderer, n_s);
+    SDL_FreeSurface(n_s);
+    SDL_Surface *pod_s = SDL_LoadBMP("images/podesavanja.bmp");
+    SDL_Texture *pod_t = SDL_CreateTextureFromSurface(renderer, pod_s);
+    SDL_FreeSurface(pod_s);
+    SDL_Surface *rez_s = SDL_LoadBMP("images/rezultati.bmp");
+    SDL_Texture *rez_t = SDL_CreateTextureFromSurface(renderer, rez_s);
+    SDL_FreeSurface(rez_s);
+    SDL_Surface *mus_s = SDL_LoadBMP("images/music.bmp");
+    SDL_Texture *mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
+
+    SDL_Rect render_quad = {0, 0, window_width, window_height};
+    Uint32 start_time = SDL_GetTicks();
+    Uint32 current_time;
+    int fade_duration = 2000;
+
+    SDL_Rect buttons[4];
+    int button_width = 170;
+    int button_height = 40;
+    int button_spacing = 15;
+    int button_x = (window_width - button_width) / 2;
+    int first_button_y = (window_height - (5 * button_height + 3 * button_spacing));
+
+    for (int i = 0; i < 4; i++) {
+        buttons[i] = (SDL_Rect){button_x, first_button_y + i * (button_height + button_spacing), button_width, button_height};
+    }
+    bool hover[4] = {false, false, false, false}, hover5 = false;
+    bool running = true;
+    while (running) {
+        current_time = SDL_GetTicks();
+        Uint32 elapsed_time = current_time - start_time;
+        if (elapsed_time > fade_duration) {
+            elapsed_time = fade_duration;
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        int opacity = (elapsed_time * 255) / fade_duration;
+        SDL_SetTextureAlphaMod(bt_t, opacity);
+
+        SDL_RenderCopy(renderer, bt_t, NULL, &render_quad);
+
+        for (int i = 0; i < 4; i++) {
+            SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
+            if ((hover[i] && i != 1) || (hover[i] && i == 1 && exist)) SDL_SetRenderDrawColor(renderer, 190, 190, 190, 100);
+            SDL_RenderFillRect(renderer, &buttons[i]);
+        }
+
+        SDL_Rect sound = {button_height, window_height - 2 * button_height, button_height, button_height};
+        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
+        if (hover5) SDL_SetRenderDrawColor(renderer, 190, 190, 190, 100);
+        SDL_RenderFillRect(renderer, &sound);
+
+        SDL_RenderCopy(renderer, ni_t, NULL, &buttons[0]);
+        SDL_RenderCopy(renderer, n_t, NULL, &buttons[1]);
+        SDL_RenderCopy(renderer, pod_t, NULL, &buttons[2]);
+        SDL_RenderCopy(renderer, rez_t, NULL, &buttons[3]);
+        SDL_RenderCopy(renderer, mus_t, NULL, &sound);
+
+        SDL_RenderPresent(renderer);
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                SDL_Quit();
+                exit(0);
+            } else if (event.type == SDL_MOUSEMOTION) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                hover[0] = SDL_PointInRect(&(SDL_Point){x, y}, &buttons[0]);
+                hover[1] = SDL_PointInRect(&(SDL_Point){x, y}, &buttons[1]);
+                hover[2] = SDL_PointInRect(&(SDL_Point){x, y}, &buttons[2]);
+                hover[3] = SDL_PointInRect(&(SDL_Point){x, y}, &buttons[3]);
+                hover5 = SDL_PointInRect(&(SDL_Point){x, y}, &sound);
+
+                if ((hover[0] || hover[2] || hover[3] || hover5) || (hover[1] && exist)) {
+                    SDL_SetCursor(hand_cursor);
+                } else {
+                    SDL_SetCursor(arrow_cursor);
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                if (SDL_PointInRect(&(SDL_Point){x, y}, &buttons[0])) {
+                    set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
+                             pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
+                             dir, &tile_size, renderer, window, &size);
+                    running = false;
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &buttons[1]) && exist) {
+                    running = false;
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &buttons[2])) {
+                    draw_settings(renderer, window_width, window_height, map, enemies, explosion, directions, bonuses, bullets,
+                                  power_up, pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game, dir, tile_size, window,
+                                  size);
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &buttons[3])) {
+                    //prikazi rezultate
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &sound)) {
+                    if (play_music) {
+                        play_music = 0;
+                        SDL_FreeSurface(mus_s);
+                        SDL_DestroyTexture(mus_t);
+                        mus_s = SDL_LoadBMP("images/xmusic.bmp");
+                        mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
+                    }
+                    else {
+                        play_music = 1;
+                        SDL_FreeSurface(mus_s);
+                        SDL_DestroyTexture(mus_t);
+                        mus_s = SDL_LoadBMP("images/music.bmp");
+                        mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
+                    }
+                }
+            }
+        }
+        SDL_Delay(20);
+    }
+    SDL_DestroyTexture(bt_t);
+    SDL_DestroyTexture(ni_t);
+    SDL_DestroyTexture(n_t);
+    SDL_DestroyTexture(pod_t);
+    SDL_DestroyTexture(rez_t);
+    SDL_FreeSurface(mus_s);
+    SDL_DestroyTexture(mus_t);
+}
 
 int main(int argc, char* argv[]) {
     SDL_Window *window = NULL;
@@ -881,7 +1328,7 @@ int main(int argc, char* argv[]) {
 
     int size = current.h / SIZE * SIZE;
     int tile_size = size / N;
-    int hud_width = 3 * tile_size;  // širina za HUD
+    int hud_width = size / 2;
     window = SDL_CreateWindow("Battle Tank", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               size + hud_width, size, SDL_WINDOW_SHOWN);
     if (!(int)window) {
@@ -897,57 +1344,31 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int **map = calloc(N, sizeof (int*));
-    if (!(int)map) {
-        perror("Greska u alokaciji memorije za mapu.");
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-    for (int i = 0; i < N; i++)
-        map[i] = calloc(N, sizeof (int));
-    make_map(N, map);
+    start_animation(renderer, size + hud_width, size);
 
-    int **enemies = calloc(N, sizeof (int*));
-    for (int i = 0; i < N; i++)
-        enemies[i] = calloc(N, sizeof (int));
-
-    int **explosion = calloc(N, sizeof (int*));
-    for (int i = 0; i < N; i++)
-        explosion[i] = calloc(N, sizeof (int));
-
-    int **directions  = calloc(N, sizeof(int*));
-    for (int i = 0; i<N; i++)
-        directions[i] = calloc(N, sizeof(int));
-
-    int **bonuses = calloc(N, sizeof (int*));
-    for (int i = 0; i < N; i++)
-        bonuses[i] = calloc(N, sizeof (int));
-
-    int **bullets = calloc(N, sizeof (int*));
-    if (!(int)bullets) {
-        perror("Greska u alokaciji memorije za metkove.");
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-    for (int i = 0; i < N; i++)
-        bullets[i] = calloc(N, sizeof (int));
-
-    tank.x = N / 2 * tile_size;
-    tank.y = (N - 3) * tile_size;
-    tank.w = tile_size;
-    tank.h = tile_size;
+    int **map = NULL;
+    int **enemies = NULL;
+    int **explosion = NULL;
+    int **directions = NULL;
+    int **bonuses = NULL;
+    int **bullets = NULL;
 
     int power_up = 0;
     int pu_started = 0, last_pu = 0, pu_placed_time = 0, pu_x = -1, pu_y = -1, pu_placed = 0;
-
     int game = 1;
-    int dir = -1; //0 levo, 1 gore, 2 desno, 3 dole
+    int dir = -1; // 0 levo, 1 gore, 2 desno, 3 dole
+
+    SDL_Cursor *hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    SDL_Cursor *arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    bool meni_hover = false, zavrsi_hover = false;
+
+    draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
+              &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
+              &size);
+
     while (game) {
         SDL_Event event;
+        int x, y;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 game = 0;
@@ -967,8 +1388,8 @@ int main(int argc, char* argv[]) {
                 } else if (event.key.keysym.sym == SDLK_SPACE) {
                     Uint32 curr_time = SDL_GetTicks();
                     if (curr_time - last_shot > shoot_cooldown) {
-                        int x = tank.x / tank.w;
-                        int y = tank.y / tank.w;
+                        x = tank.x / tank.w;
+                        y = tank.y / tank.w;
                         bullets[x][y] = curr_tank[11] - '0' + 1;
                         if (power_up == 5) {
                             if (curr_tank[11] - '0' == 0) {
@@ -1008,18 +1429,47 @@ int main(int argc, char* argv[]) {
                         last_shot = curr_time;
                     }
                 }
+            } else if (event.type == SDL_MOUSEMOTION) {
+                SDL_GetMouseState(&x, &y);
+                meni_hover = SDL_PointInRect(&(SDL_Point){x, y}, &meni_rect);
+                zavrsi_hover = SDL_PointInRect(&(SDL_Point){x, y}, &zavrsi_rect);
+
+                if (meni_hover || zavrsi_hover) {
+                    SDL_SetCursor(hand_cursor);
+                } else {
+                    SDL_SetCursor(arrow_cursor);
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                SDL_GetMouseState(&x, &y);
+                if (SDL_PointInRect(&(SDL_Point){x, y}, &meni_rect)) {
+                    meni_hover = false, zavrsi_hover = false;
+                    exist = 1;
+                    SDL_SetCursor(arrow_cursor);
+                    draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
+                              &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
+                              window, &size);
+                }
+                else if (SDL_PointInRect(&(SDL_Point){x, y}, &zavrsi_rect)) {
+                    meni_hover = false, zavrsi_hover = false;
+                    SDL_SetCursor(arrow_cursor);
+                    game_over();
+                    draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
+                              &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
+                              window, &size);
+                }
             }
         }
+
         generate_map(renderer, map, tile_size);
         shoot(renderer, bullets, tile_size, map, enemies, power_up, explosion);
-        draw_explosion(renderer, N, explosion, tile_size);
+        draw_explosion(renderer, explosion, tile_size);
         powerUp(&power_up, &pu_started, &last_pu, &pu_placed_time, map, &pu_x, &pu_y, &pu_placed, enemies, renderer);
         drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed, pu_placed_time, SDL_GetTicks());
         move_tank(renderer, map, dir, enemies);
 
         Uint32 curr_time = SDL_GetTicks();
         if (curr_time - last_spawn > spawn_time) {
-            spawn_enemies(N, enemies, 0);
+            spawn_enemies(enemies, 0);
             last_spawn = curr_time;
         }
         if (curr_time - last_move > enemy_speed && power_up != 2) {
@@ -1029,14 +1479,13 @@ int main(int argc, char* argv[]) {
         if (tank.x / tank.w == pu_x && tank.y / tank.w == pu_y) {
             startPu(&power_up, map, &last_pu, &pu_placed, &pu_x, &pu_y, &pu_started, &pu_placed_time, enemies, renderer, explosion);
         }
-        generate_enemy(renderer, N, enemies, tile_size);
-        drawHUD(renderer, power_up, tile_size, lives, N);
+        generate_enemy(renderer, enemies, tile_size);
+        drawHUD(renderer, power_up, tile_size, meni_hover, zavrsi_hover, size / 2);
 
         dir = -1;
         SDL_RenderPresent(renderer);
         SDL_Delay(20);
     }
-
     for (int i = 0; i < N; i++)
         free(map[i]);
     free(map);
