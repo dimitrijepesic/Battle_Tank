@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 
 #define SIZE 300
 
@@ -23,6 +24,11 @@ typedef struct node {
     struct node *left;
     struct node *right;
 } node;
+
+typedef struct {
+    int poslednji_potez;
+    bool pokusaji[4];
+} pomeranje;
 
 void free_all (node *root){
     if (root==NULL){
@@ -474,26 +480,39 @@ bool not_in(int x, int *niz, int length) {
     return true;
 }
 
-void random_next(int x, int y, int **map, int next[2], int tren, int N) {
+void random_next(int x, int y, int xnas, int ynas, int **map, int **enemies, int next[2], int *dir) {
     int val[] = {1, 7, 8, 9, 10, 11};
     int val_length = 6;
-    int move[4][2] = {{0,-1}, {0,1}, {-1,0}, {1,0}};
-    int start = tren - 1;
+    int move[4][2] = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}};
+    int indices[] = {0, 1, 2, 3};
+
+    for (int i = 3; i > 0; i--) {
+        int j = rand() % (i + 1);
+        int temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+    }
+
+    next[0] = x;
+    next[1] = y;
+
     for (int i = 0; i < 4; i++) {
-        int idx = (start + i) % 4;
+        int idx = indices[i];
         int nx = x + move[idx][0];
         int ny = y + move[idx][1];
-        if (nx >= 0 && nx < N && ny >= 0 && ny < N && not_in(map[nx][ny], val, val_length)) {
+
+        if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
+            not_in(map[nx][ny], val, val_length) &&
+            enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas)) {
             next[0] = nx;
             next[1] = ny;
+            *dir = idx;
             return;
         }
     }
-    next[0] = x;
-    next[1] = y;
 }
 
-void bfs_next(int x, int y, int x_tar, int y_tar, int **map, int next[2], int N) {
+void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int **map, int **enemies, int next[2], int *dir) {
     int val[] = {1, 7, 8, 9, 10, 11};
     int val_length = 6;
 
@@ -514,26 +533,37 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int **map, int next[2], int N)
     visited[x][y] = 0;
 
     int move[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
-    Queue fmove = {-1, -1}; // stavljam pocetni potez na invalid
+    Queue fmove = {x,y}; // stavljam pocetni potez na invalid
 
     while (front != rear) {
         Queue curr = queue[front++];
-        if (curr.x == x_tar && curr.y == y_tar) break;
+        if (curr.x == x_tar && curr.y == y_tar) {
+            fmove.x = x_tar;
+            fmove.y = y_tar;
+            break;
+        }
 
         for (int i = 0; i < 4; i++) {
             int nx = curr.x + move[i][0];
             int ny = curr.y + move[i][1];
-            if (nx >= 0 && nx < N && ny >= 0 && ny < N && visited[nx][ny] == -1 && not_in(map[nx][ny], val, val_length)) {
+
+            if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
+                not_in(map[nx][ny], val, val_length) &&
+                visited[nx][ny] == -1 &&
+                enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas)) {
                 visited[nx][ny] = visited[curr.x][curr.y] + 1;
                 queue[rear++] = (Queue){nx, ny};
-                if (fmove.x == -1 && fmove.y == -1 && visited[x][y] == 0) {
-                    fmove.x = nx; fmove.y = ny;
+                if (fmove.x == x && fmove.y == y) {
+                    fmove.x = nx;
+                    fmove.y = ny;
+                    *dir = i;
                 }
             }
         }
     }
 
     next[0] = fmove.x; next[1] = fmove.y;
+
 
     for (int i = 0; i < N; i++) {
         free(visited[i]);
@@ -593,48 +623,79 @@ void spawn_enemies(int N, int **enemies, int diff){
     }
 }
 
-void update_enemy_pos(int **map, int **enemies, int **directions, int N, int diff, int x_tar, int y_tar){
+void update_enemy_pos(int **map, int **enemies, int N, int diff, int x_tar, int y_tar){
     int **new_enemies = malloc(N * sizeof(int *));
-    int **new_directions = malloc(N * sizeof(int *));
     for (int i = 0; i < N; i++) {
         new_enemies[i] = calloc(N, sizeof(int));
-        new_directions[i] = calloc(N, sizeof(int));
     }
 
     int next[2];
+    int dir; // dir: 3-levo 2-gore 1-desno 0-dole
+    int tankx = tank.x/tank.w;
+    int tanky = tank.y/tank.h;
     for (int i = 0; i < N; i++){
         for (int j = 0; j < N; j++){
             if (enemies[i][j] > 0){
                 switch(diff){
                     case 0:
                     case 1:
-                        random_next(i, j, map, next, directions[i][j], N);
+                        random_next(i, j, tankx, tanky, map, enemies, next, &dir);
                         break;
                     case 2:
                         if (enemies[i][j] < 5){
-                            bfs_next(i, j, x_tar, y_tar, map, next, N);
+                            bfs_next(i, j, x_tar, y_tar,tankx, tanky, map, enemies, next, &dir);
                         } else {
-                            bfs_next(i, j, N/2, N-1, map, next, N);
+                            bfs_next(i, j, N/2, N-1, tankx, tanky, map, enemies, next, &dir);
                         }
                         break;
                     default:
                         next[0] = i;
                         next[1] = j;
                 }
-                new_enemies[next[0]][next[1]] = enemies[i][j];
-                new_directions[next[0]][next[1]] = directions[i][j];
+                if (enemies[i][j] < 5){
+                    switch(dir){
+                        case 0:{
+                            new_enemies[next[0]][next[1]] = 4; break;
+                        }
+                        case 1:{
+                            new_enemies[next[0]][next[1]] = 3; break;
+                        }
+                        case 2:{
+                            new_enemies[next[0]][next[1]] = 2; break;
+                        }
+                        case 3:{
+                            new_enemies[next[0]][next[1]] = 1; break;
+                        }
+
+                    }
+                }
+                else{
+                    switch(dir){
+
+                        case 0:{
+                            new_enemies[next[0]][next[1]] = 8; break;
+                        }
+                        case 1:{
+                            new_enemies[next[0]][next[1]] = 7; break;
+                        }
+                        case 2:{
+                            new_enemies[next[0]][next[1]] = 6; break;
+                        }
+                        case 3:{
+                            new_enemies[next[0]][next[1]] = 5; break;
+                        }
+                    }
+                }
+
             }
         }
     }
 
     for (int i = 0; i < N; i++) {
         memcpy(enemies[i], new_enemies[i], N * sizeof(int));
-        memcpy(directions[i], new_directions[i], N * sizeof(int));
         free(new_enemies[i]);
-        free(new_directions[i]);
     }
     free(new_enemies);
-    free(new_directions);
 }
 
 void powerUp(int *power_up, int *pu_started, int *last_pu, int *pu_placed_time, int **map, int *pu_x, int *pu_y, int *pu_placed, int **enemies, SDL_Renderer *renderer){
@@ -651,7 +712,7 @@ void powerUp(int *power_up, int *pu_started, int *last_pu, int *pu_placed_time, 
             case 1: // ubij sve neprijatelje
             case 2: // zaledi neprijatelje
             case 3: // stit
-            case 5: //zvezda 2
+            case 5: // zvezda 2
             case 6: // zvezda 3
                 if(SDL_GetTicks() > *pu_started + 15000){
                     *pu_started = 0;
@@ -958,11 +1019,11 @@ int main(int argc, char* argv[]) {
 
         Uint32 curr_time = SDL_GetTicks();
         if (curr_time - last_spawn > spawn_time) {
-            spawn_enemies(N, enemies, 2);
+            spawn_enemies(N, enemies, 0);
             last_spawn = curr_time;
         }
         if (curr_time - last_move > enemy_speed && power_up != 2) {
-            update_enemy_pos(map, enemies, directions, N, 2, tank.x, tank.y);
+            update_enemy_pos(map, enemies, N, 2, tank.x, tank.y);
             last_move = curr_time;
         }
         if (tank.x / tank.w == pu_x && tank.y / tank.w == pu_y) {
