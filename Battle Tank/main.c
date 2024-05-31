@@ -15,7 +15,7 @@ int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bo
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0;
 Uint32 enemy_speed = 600;
-Uint32 spawn_time = 5000, last_spawn = 0;
+Uint32 spawn_time = 10000, last_spawn = 0;
 SDL_Rect tank;
 SDL_Rect meni_rect, zavrsi_rect;
 
