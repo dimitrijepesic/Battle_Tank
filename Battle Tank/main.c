@@ -2,6 +2,7 @@
 #include <time.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <SDL_mixer.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@
 static char curr_tank[50] = "images/tank1.bmp";
 static char diff[50] = "images/lako.bmp";
 static char mapsize[50] = "images/10.bmp";
+static char music_icon[50] = "images/music.bmp";
 int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10;
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0;
@@ -27,7 +29,7 @@ Uint32 turn_cooldown = 500;
 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
-    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size);
+    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music *music, Mix_Music* music2);
 void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, int*** bonuses, int*** bullets, int* power_up,
     int* pu_started, int* last_pu, int* pu_placed_time, int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir,
     int* tile_size, SDL_Renderer* renderer, SDL_Window* window, int* size);
@@ -258,7 +260,7 @@ void move_tank(SDL_Renderer* renderer, int** map, int dir, int** enemies) {
 void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size) {
+    int* size, Mix_Music* music, Mix_Music *music2) {
     exist = 0;
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -275,11 +277,12 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_Surface* text;
     SDL_Texture* text_texture;
     SDL_Color color = { 255, 255, 255 };
-    char tekst[10];
 
     text = TTF_RenderText_Solid(font, "GAME OVER", color);
     text_texture = SDL_CreateTextureFromSurface(renderer, text);
-    SDL_Rect dest = { (window_width - text->w) / 2, text->h - 25, text->w, text->h };
+
+    int text_y = 0;
+    SDL_Rect dest = { (window_width - text->w) / 2, text_y, text->w, text->h };
 
     SDL_Rect buttons[2];
     int button_width = 170;
@@ -291,12 +294,29 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     for (int i = 0; i < 2; i++) {
         buttons[i] = (SDL_Rect){ button_x, first_button_y + i * (button_height + button_spacing), button_width, button_height };
     }
-    bool hover[2] = { false, false};
+    bool hover[2] = { false, false };
     bool running = true;
-    while (running) {
+    bool animation_done = false;
 
+    Uint32 start_time = SDL_GetTicks();
+
+    while (running) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+
+        if (!animation_done) {
+            Uint32 current_time = SDL_GetTicks();
+            Uint32 elapsed_time = current_time - start_time;
+            text_y = (elapsed_time / 10) > ((window_height / 2) - (text->h / 2)) ? ((window_height / 2) - (text->h / 2)) : (elapsed_time / 10);
+
+            if (text_y == (window_height / 2 - text->h / 2)) {
+                animation_done = true;
+            }
+
+            dest.y = text_y;
+        }
+
+        SDL_RenderCopy(renderer, text_texture, NULL, &dest);
 
         for (int i = 0; i < 2; i++) {
             SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
@@ -306,7 +326,6 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
 
         SDL_RenderCopy(renderer, ni_t, NULL, &buttons[0]);
         SDL_RenderCopy(renderer, mn_t, NULL, &buttons[1]);
-        SDL_RenderCopy(renderer, text_texture, NULL, &dest);
 
         SDL_RenderPresent(renderer);
         SDL_Event event;
@@ -332,18 +351,21 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                 int x, y;
                 SDL_GetMouseState(&x, &y);
                 if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[0])) {
+                    if (play_music) Mix_PlayMusic(music, 0);
+                    if (play_music) Mix_PlayMusic(music2, 0);
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1])) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
                     draw_menu(renderer, window_width, window_height, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
-                        window, &size);
+                        window, &size, music, music2);
                     running = false;
                 }
             }
@@ -355,6 +377,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_DestroyTexture(text_texture);
     SDL_FreeSurface(text);
 }
+
 void kill_enemy(int i, int j, int** map, int** enemies, SDL_Renderer* renderer, int** explosion) {
     score += enemies[i][j] * 100;
     enemies[i][j] = 0;
@@ -1048,7 +1071,8 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
             }
             break;
         default: // srce
-            lives++;
+            if (lives < 3)
+                lives++;
             *power_up = 0;
             *pu_started = 0;
             *last_pu = (int)(SDL_GetTicks());
@@ -1075,7 +1099,7 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
     }
 }
 
-void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size) {
+void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size, bool *new_exp) {
     SDL_Surface* explosion_s = SDL_LoadBMP("images/explosion.bmp");
     SDL_Texture* explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
     SDL_FreeSurface(explosion_s);
@@ -1097,6 +1121,7 @@ void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size) {
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             if (explosion[i][j] > 0) {
+                if (explosion[i][j] == 11) *new_exp = true;
                 select_tile.x = (12 - explosion[i][j]) * 96;
                 select_tile.y = 0;
                 SDL_RenderCopy(renderer, explosion_t, &select_tile, &tile[i][j]);
@@ -1104,8 +1129,10 @@ void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size) {
             }
         }
     }
+
     SDL_DestroyTexture(explosion_t);
 }
+
 
 void drawPowerUp(SDL_Renderer* renderer, int** map, int tile_size, int pu_x, int pu_y, int pu_placed, Uint32 pu_placed_time, Uint32 current_time) {
     if (pu_placed) {
@@ -1230,8 +1257,6 @@ void drawHUD(SDL_Renderer* renderer, int power_up, int tile_size, bool meni_hove
     }
     SDL_RenderFillRect(renderer, &zavrsi_rect);
 
-
-
     SDL_DestroyTexture(text_texture);
     SDL_FreeSurface(text);
 
@@ -1243,9 +1268,12 @@ void drawHUD(SDL_Renderer* renderer, int power_up, int tile_size, bool meni_hove
     SDL_DestroyTexture(hudr_t);
 }
 
-void start_animation(SDL_Renderer* renderer, int window_width, int window_height) {
+void start_animation(SDL_Renderer* renderer, int window_width, int window_height, Mix_Music *intro) {
     SDL_Texture* textures[55];
     char filename[50];
+
+    Mix_PlayMusic(intro, 0);
+
     for (int i = 0; i < 55; i++) {
         sprintf(filename, "images/tank_%03d.bmp", i);
         SDL_Surface* frame = SDL_LoadBMP(filename);
@@ -1343,7 +1371,7 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
 void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size) {
+    int* size, Mix_Music *music) {
 
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -1430,6 +1458,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                 int x, y;
                 SDL_GetMouseState(&x, &y);
                 if (SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow1_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     if (bot_difficulty == 15) {
                         strcpy(diff, "images/lako.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
@@ -1448,6 +1477,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow1_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     if (bot_difficulty == 10) {
                         strcpy(diff, "images/srednje.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
@@ -1466,6 +1496,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow2_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     if (N == 15) {
                         strcpy(mapsize, "images/10.bmp");
                         map_size_s = SDL_LoadBMP(mapsize);
@@ -1482,6 +1513,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow2_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     if (N == 10) {
                         strcpy(mapsize, "images/15.bmp");
                         map_size_s = SDL_LoadBMP(mapsize);
@@ -1498,6 +1530,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & potvrdi_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     SDL_DisplayMode current;
                     SDL_GetCurrentDisplayMode(0, &current);
                     *size = current.h / SIZE * SIZE;
@@ -1528,7 +1561,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size) {
+    int* size, Mix_Music *music, Mix_Music *music2) {
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 
@@ -1547,7 +1580,7 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_Surface* rez_s = SDL_LoadBMP("images/rezultati.bmp");
     SDL_Texture* rez_t = SDL_CreateTextureFromSurface(renderer, rez_s);
     SDL_FreeSurface(rez_s);
-    SDL_Surface* mus_s = SDL_LoadBMP("images/music.bmp");
+    SDL_Surface* mus_s = SDL_LoadBMP(music_icon);
     SDL_Texture* mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
 
     SDL_Rect render_quad = { 0, 0, window_width, window_height };
@@ -1626,35 +1659,44 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
                 int x, y;
                 SDL_GetMouseState(&x, &y);
                 if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[0])) {
+                    if (play_music) Mix_PlayMusic(music, 0);
+                    if (play_music) Mix_PlayMusic(music2, 0);
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1]) && exist) {
+                    if (play_music) Mix_PlayMusic(music, 0);
+                    if (play_music) Mix_PlayMusic(music2, 0);
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[2])) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     draw_settings(renderer, window_width, window_height, map, enemies, explosion, directions, bonuses, bullets,
                         power_up, pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game, dir, tile_size, window,
-                        size);
+                        size, music);
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[3])) {
+                    if (play_music) Mix_PlayMusic(music, 0);
                     //prikazi rezultate
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & sound)) {
                     if (play_music) {
+                        Mix_PlayMusic(music, 0);
                         play_music = 0;
                         SDL_FreeSurface(mus_s);
                         SDL_DestroyTexture(mus_t);
-                        mus_s = SDL_LoadBMP("images/xmusic.bmp");
+                        strcpy(music_icon, "images/xmusic.bmp");
+                        mus_s = SDL_LoadBMP(music_icon);
                         mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
                     }
                     else {
                         play_music = 1;
                         SDL_FreeSurface(mus_s);
                         SDL_DestroyTexture(mus_t);
-                        mus_s = SDL_LoadBMP("images/music.bmp");
+                        strcpy(music_icon, "images/music.bmp");
+                        mus_s = SDL_LoadBMP(music_icon);
                         mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
                     }
                 }
@@ -1700,10 +1742,50 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (TTF_Init() < 0) {
-        printf("Error initializing SDL_ttf: ", TTF_GetError());
+        printf("Error initializing SDL_ttf");
+        return 1;
+    }
+    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+        printf("SDL could not initialize!");
+        return 1;
+    }
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        printf("SDL_mixer could not initialize! SDL_mixer Error");
+        return 1;
     }
 
-    start_animation(renderer, size + hud_width, size);
+    Mix_Music* music = Mix_LoadMUS("sounds/hover.wav");
+    if (music == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+    Mix_Music* shoot_sound = Mix_LoadMUS("sounds/shoot.mp3");
+    if (shoot_sound == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+    Mix_Music* exp_sound = Mix_LoadMUS("sounds/boom.mp3");
+    if (exp_sound == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+    Mix_Music* game_over_sound = Mix_LoadMUS("sounds/gameover.mp3");
+    if (game_over_sound == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+    Mix_Music* music2 = Mix_LoadMUS("sounds/start.mp3");
+    if (music2 == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+    Mix_Music* intro = Mix_LoadMUS("sounds/intro.mp3");
+    if (intro == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
+
+    start_animation(renderer, size + hud_width, size, intro);
 
     int** map = NULL;
     int** enemies = NULL;
@@ -1723,7 +1805,7 @@ int main(int argc, char* argv[]) {
 
     draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
-        &size);
+        &size, music, music2);
 
     while (game) {
 
@@ -1753,6 +1835,7 @@ int main(int argc, char* argv[]) {
                 else if (event.key.keysym.sym == SDLK_SPACE) {
                     Uint32 curr_time = SDL_GetTicks();
                     if (curr_time - last_shot > shoot_cooldown) {
+                        if (play_music) Mix_PlayMusic(shoot_sound, 0);
                         x = tank.x / tank.w;
                         y = tank.y / tank.w;
                         bullets[x][y] = curr_tank[11] - '0' + 1;
@@ -1818,25 +1901,31 @@ int main(int argc, char* argv[]) {
                 SDL_GetMouseState(&x, &y);
                 if (SDL_PointInRect(&(SDL_Point) { x, y }, & meni_rect)) {
                     meni_hover = false, zavrsi_hover = false;
+                    if (play_music) Mix_PlayMusic(music, 0);
                     exist = 1;
                     SDL_SetCursor(arrow_cursor);
                     draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
-                        window, &size);
+                        window, &size, music, music2);
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & zavrsi_rect)) {
                     meni_hover = false, zavrsi_hover = false;
+                    if (play_music) Mix_PlayMusic(music, 0);
                     SDL_SetCursor(arrow_cursor);
                     exist = 0;
                     draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
-                        window, &size);
+                        window, &size, music, music2);
                 }
             }
         }
         generate_map(renderer, map, tile_size);
         shoot(renderer, bullets, tile_size, map, enemies, power_up, explosion);
-        draw_explosion(renderer, explosion, tile_size);
+        bool new_exp = false;
+        draw_explosion(renderer, explosion, tile_size, &new_exp);
+        if (play_music && new_exp) {
+            Mix_PlayMusic(exp_sound, 0);
+        }
         powerUp(&power_up, &pu_started, &last_pu, &pu_placed_time, map, &pu_x, &pu_y, &pu_placed, enemies, renderer);
         drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed, pu_placed_time, SDL_GetTicks());
         move_tank(renderer, map, dir, enemies);
@@ -1856,9 +1945,10 @@ int main(int argc, char* argv[]) {
         generate_enemy(renderer, enemies, tile_size);
         drawHUD(renderer, power_up, tile_size, meni_hover, zavrsi_hover, size / 2);
         if (!lives) {
+            if (play_music) Mix_PlayMusic(game_over_sound, 0);
             game_over(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                 &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
-                &size);
+                &size, music, music2);
         }
 
         dir = -1;
@@ -1870,6 +1960,13 @@ int main(int argc, char* argv[]) {
         free(map[i]);
     free(map);
 
+    Mix_FreeMusic(intro);
+    Mix_FreeMusic(music2);
+    Mix_FreeMusic(game_over_sound);
+    Mix_FreeMusic(exp_sound);
+    Mix_FreeMusic(shoot_sound);
+    Mix_FreeMusic(music);
+    Mix_CloseAudio();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
