@@ -29,11 +29,11 @@ Uint32 turn_cooldown = 500;
 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
-    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music *music, Mix_Music* music2);
+    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music* music, Mix_Music* music2);
 void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, int*** bonuses, int*** bullets, int* power_up,
     int* pu_started, int* last_pu, int* pu_placed_time, int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir,
     int* tile_size, SDL_Renderer* renderer, SDL_Window* window, int* size);
-
+void updateHighScore(int sc);
 
 void initialize_enemy_timers() {
     enemy_last_turn = malloc(N * sizeof(Uint32*));
@@ -260,7 +260,7 @@ void move_tank(SDL_Renderer* renderer, int** map, int dir, int** enemies) {
 void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size, Mix_Music* music, Mix_Music *music2) {
+    int* size, Mix_Music* music, Mix_Music* music2) {
     exist = 0;
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -299,6 +299,8 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     bool animation_done = false;
 
     Uint32 start_time = SDL_GetTicks();
+
+    updateHighScore(score);
 
     while (running) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -388,7 +390,7 @@ void kill_enemy(int i, int j, int** map, int** enemies, SDL_Renderer* renderer, 
 
 void kill_player(int n, int tile_size, int pu) {
     if (pu == 2) return;
-    if (lives){
+    if (lives) {
         lives--;
         tank.x = n / 2 * tile_size;
         tank.y = (n - 3) * tile_size;
@@ -1099,7 +1101,7 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
     }
 }
 
-void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size, bool *new_exp) {
+void draw_explosion(SDL_Renderer* renderer, int** explosion, int tile_size, bool* new_exp) {
     SDL_Surface* explosion_s = SDL_LoadBMP("images/explosion.bmp");
     SDL_Texture* explosion_t = SDL_CreateTextureFromSurface(renderer, explosion_s);
     SDL_FreeSurface(explosion_s);
@@ -1268,7 +1270,7 @@ void drawHUD(SDL_Renderer* renderer, int power_up, int tile_size, bool meni_hove
     SDL_DestroyTexture(hudr_t);
 }
 
-void start_animation(SDL_Renderer* renderer, int window_width, int window_height, Mix_Music *intro) {
+void start_animation(SDL_Renderer* renderer, int window_width, int window_height, Mix_Music* intro) {
     SDL_Texture* textures[55];
     char filename[50];
 
@@ -1371,7 +1373,7 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
 void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size, Mix_Music *music) {
+    int* size, Mix_Music* music) {
 
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -1561,7 +1563,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size, Mix_Music *music, Mix_Music *music2) {
+    int* size, Mix_Music* music, Mix_Music* music2) {
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 
@@ -1711,6 +1713,84 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_DestroyTexture(rez_t);
     SDL_FreeSurface(mus_s);
     SDL_DestroyTexture(mus_t);
+}
+
+
+
+void updateHighScore(int sc) {
+
+    char datee[20], timee[20];
+
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(datee, "%d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    sprintf(timee, "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    FILE* f = fopen("high_scores.txt", "r");
+    if (!f) { printf("nece se otvori"); return; }
+
+    int scores[10] = { 0 };
+    char dates[10][20] = { {'\0'} }, times[10][20] = { {'\0'} }, linija[100];
+    int i = 0;
+    while (fgets(linija, 100, f)) {
+        sscanf(linija, "%d %s %s\n", &scores[i], dates[i], times[i]);
+        i++;
+    }
+    fclose(f);
+
+    bool added = false;
+    for (int k = 0;k < i;k++) {
+        if (sc > scores[k]) {
+            for (int j = i - 1;j > k;j--) {
+                scores[j] = scores[j - 1];
+                strcpy(dates[j], dates[j - 1]);
+                strcpy(times[j], times[j - 1]);
+            }
+            scores[k] = sc;
+            strcpy(dates[k], datee);
+            strcpy(times[k], timee);
+            added = true;
+            if (i != 10) i++;
+            break;
+        }
+    }
+    if (!added && i < 10) {
+        scores[i] = sc;
+        strcpy(dates[i], datee);
+        strcpy(times[i], timee);
+        i++;
+        added = true;
+    }
+    if (added) {
+        f = fopen("high_scores.txt", "w");
+        if (!f) { printf("nece se otvori"); return; }
+
+        for (int k = 0;k < i;k++) {
+            if (scores[k] == 0) break;
+            fprintf(f, "%d %s %s\n", scores[k], dates[k], times[k]);
+        }
+
+        fclose(f);
+    }
+}
+
+void readHighScores() {
+    FILE* f = fopen("high_scores.txt", "r");
+    if (!f) { 
+        printf("nece se otvori"); 
+        return; 
+    }
+    int scores[10] = { 0 };
+    char dates[10][20] = { {'\0'} }, times[10][20] = { {'\0'} }, linija[100];
+    int br = 0;
+    while (fgets(linija, 100, f)) {
+        sscanf(linija, "%d %s %s\n", &scores[br], dates[br], times[br]);
+        br++;
+    }
+    fclose(f);
+
+
+
 }
 
 int main(int argc, char* argv[]) {
@@ -1944,13 +2024,18 @@ int main(int argc, char* argv[]) {
         }
         generate_enemy(renderer, enemies, tile_size);
         drawHUD(renderer, power_up, tile_size, meni_hover, zavrsi_hover, size / 2);
+        
         if (!lives) {
             if (play_music) Mix_PlayMusic(game_over_sound, 0);
             game_over(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                 &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
                 &size, music, music2);
         }
-
+        if (bullets[N / 2][N - 1]) {
+            game_over(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
+                &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
+                &size, music, music2);
+        }
         dir = -1;
         SDL_RenderPresent(renderer);
         SDL_Delay(20);
