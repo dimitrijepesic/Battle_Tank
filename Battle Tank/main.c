@@ -17,7 +17,7 @@ static char mapsize[50] = "images/10.bmp";
 static char music_icon[50] = "images/music.bmp";
 int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10;
 Uint32 last_shot = 0, shoot_cooldown = 500;
-static Uint32 last_move = 0;
+static Uint32 last_move = 0, menu_lasted = 0;
 Uint32 enemy_speed = 600;
 Uint32 spawn_time = 10000, last_spawn = 0;
 SDL_Rect tank;
@@ -27,6 +27,10 @@ bool skoci = false;
 Uint32** enemy_last_turn;
 Uint32** enemy_last_shot;
 Uint32 turn_cooldown = 500;
+
+int getGameTime() {
+    return SDL_GetTicks() - menu_lasted;
+}
 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
@@ -360,6 +364,12 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
+                    for (int i = 0;i < N;i++) {
+                        for (int j = 0;j < N;j++) {
+                            (*enemies)[i][j] = 0;
+                        }
+                    }
+                    menu_lasted = SDL_GetTicks();
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1])) {
@@ -370,6 +380,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                     /*draw_menu(renderer, window_width, window_height, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
                         window, &size, music, music2);*/
+                    menu_lasted = SDL_GetTicks();
                     skoci = true;
                     running = false;
                 }
@@ -384,19 +395,19 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
 }
 
 void kill_enemy(int i, int j, int** map, int** enemies, SDL_Renderer* renderer, int** explosion) {
-    score += enemies[i][j] * 100;
+    score += (enemies[i][j] / 4 + 1) * 200;
     enemies[i][j] = 0;
     tanks_left--;
     explosion[i][j] = 12;
     explosion[i][j] = 12;
 }
 
-void kill_player(int n, int tile_size, int pu) {
-    if (pu == 2) return;
+void kill_player(int tile_size, int pu) {
+    if (pu == 3) return;
     if (lives) {
         lives--;
-        tank.x = n / 2 * tile_size;
-        tank.y = (n - 3) * tile_size;
+        tank.x = N / 2 * tile_size;
+        tank.y = (N - 3) * tile_size;
     }
 }
 
@@ -431,7 +442,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                     bullets[i - 1][j] = 1;
                 }
                 else if (i - 1 == tank.x / tile_size && j == tank.y / tile_size) {
-                    kill_player(N, tile_size, pu);
+                    kill_player(tile_size, pu);
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 270, NULL, SDL_FLIP_NONE);
                 if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
@@ -455,7 +466,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                     bullets[i][j - 1] = 1;
                 }
                 else if (i == tank.x / tile_size && j - 1 == tank.y / tile_size) {
-                    kill_player(N, tile_size, pu);
+                    kill_player(tile_size, pu);
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 0, NULL, SDL_FLIP_NONE);
                 if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
@@ -487,7 +498,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                     bullets[i + 1][j] = 1;
                 }
                 else if (i + 1 == tank.x / tile_size && j == tank.y / tile_size) {
-                    kill_player(N, tile_size, pu);
+                    kill_player(tile_size, pu);
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 90, NULL, SDL_FLIP_NONE);
                 if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
@@ -511,7 +522,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                     bullets[i][j + 1] = 1;
                 }
                 else if (i == tank.x / tile_size && j + 1 == tank.y / tile_size) {
-                    kill_player(N, tile_size, pu);
+                    kill_player(tile_size, pu);
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 180, NULL, SDL_FLIP_NONE);
                 if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)) {
@@ -613,8 +624,8 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
 
 void startPu(int* power_up, int** map, int* last_pu, int* pu_placed, int* pu_x, int* pu_y, int* pu_started, int* pu_placed_time, int** enemies, SDL_Renderer* renderer, int** explosion) {
     *power_up = *pu_placed;
-    *last_pu = (int)(SDL_GetTicks());
-    *pu_started = (int)(SDL_GetTicks());
+    *last_pu = getGameTime();
+    *pu_started = getGameTime();
     *pu_placed_time = 0;
     *pu_x = -1;
     *pu_y = -1;
@@ -971,7 +982,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
     int tanky = tank.y / tank.h;
     int bazax = 0, bazay = 0;
     baza(map, &bazax, &bazay);
-    Uint32 curr_time = SDL_GetTicks();
+    Uint32 curr_time = getGameTime();
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -1048,9 +1059,9 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
     if (*power_up) {
         switch (*power_up) {
         case 4: // zvezda
-            if (SDL_GetTicks() > *pu_started + 15000) {
+            if (getGameTime() > *pu_started + 15000) {
                 *pu_started = 0;
-                *last_pu = (int)(SDL_GetTicks());
+                *last_pu = getGameTime();
                 *power_up = 0;
                 shoot_cooldown = 500;
             }
@@ -1060,16 +1071,16 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
         case 3: // stit
         case 5: //zvezda 2
         case 6: // zvezda 3
-            if (SDL_GetTicks() > *pu_started + 15000) {
+            if (getGameTime() > *pu_started + 15000) {
                 *pu_started = 0;
-                *last_pu = (int)(SDL_GetTicks());
+                *last_pu = getGameTime();
                 *power_up = 0;
             }
             break;
         case 7: // lopata
-            if (SDL_GetTicks() > *pu_started + 15000) {
+            if (getGameTime() > *pu_started + 15000) {
                 *pu_started = 0;
-                *last_pu = (int)(SDL_GetTicks());
+                *last_pu = getGameTime();
                 *power_up = 0;
                 map[N / 2 - 1][N - 1] = map[N / 2 + 1][N - 1] = 7;
                 map[N / 2 - 1][N - 2] = map[N / 2 + 1][N - 2] = map[N / 2][N - 2] = 7;
@@ -1080,27 +1091,27 @@ void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, 
                 lives++;
             *power_up = 0;
             *pu_started = 0;
-            *last_pu = (int)(SDL_GetTicks());
+            *last_pu = getGameTime();
             break;
         }
     }
     else if (*pu_placed) {
-        if (SDL_GetTicks() > *pu_placed_time + 10000) { // skloni mocku
-            *last_pu = (int)(SDL_GetTicks());
+        if (getGameTime() > *pu_placed_time + 10000) { // skloni mocku
+            *last_pu = getGameTime();
             *pu_placed_time = 0;
             *pu_y = -1;
             *pu_x = -1;
             *pu_placed = 0;
         }
     }
-    else if (SDL_GetTicks() > *last_pu + 10000) { // stavi mocku
+    else if (getGameTime() > *last_pu + 10000) { // stavi mocku
         srand(time(NULL));
         *pu_placed = rand() % 8 + 1;
         *pu_x = rand() % N, * pu_y = rand() % N;
         while (map[*pu_x][*pu_y] < 2 || map[*pu_x][*pu_y] > 6 || enemies[*pu_x][*pu_y] || tank.x == *pu_y * tank.w || tank.y == *pu_x * tank.w) {
             *pu_x = rand() % N, * pu_y = rand() % N;
         }
-        *pu_placed_time = (int)(SDL_GetTicks());
+        *pu_placed_time = getGameTime();
     }
 }
 
@@ -1368,6 +1379,7 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
     *pu_x = -1;
     *pu_y = -1;
     *pu_placed = 0;
+    //if(diff == )
 
     *game = 1;
     *dir = -1; // 0 levo, 1 gore, 2 desno, 3 dole
@@ -1470,6 +1482,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 10;
                         enemy_speed = 600;
+                        spawn_time = 10000;
                         exist = 0;
                     }
                     else if (bot_difficulty == 20) {
@@ -1478,6 +1491,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
+                        spawn_time = 8000;
                         exist = 0;
                     }
                 }
@@ -1489,6 +1503,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
+                        spawn_time = 8000;
                         exist = 0;
                     }
                     else if (bot_difficulty == 15) {
@@ -1497,6 +1512,8 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 20;
                         enemy_speed = 400;
+                        spawn_time = 6500;
+
                         exist = 0;
                     }
                 }
@@ -1589,7 +1606,7 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_Texture* mus_t = SDL_CreateTextureFromSurface(renderer, mus_s);
 
     SDL_Rect render_quad = { 0, 0, window_width, window_height };
-    Uint32 start_time = SDL_GetTicks();
+    Uint32 start_time = SDL_GetTicks(), menu_started, menu_ended;
     Uint32 current_time;
     int fade_duration = 2000;
 
@@ -1605,6 +1622,7 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
     }
     bool hover[4] = { false, false, false, false }, hover5 = false;
     bool running = true;
+    menu_started = SDL_GetTicks();
     while (running) {
         current_time = SDL_GetTicks();
         Uint32 elapsed_time = current_time - start_time;
@@ -1669,11 +1687,15 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
+                    menu_ended = SDL_GetTicks();
+                    menu_lasted = SDL_GetTicks();
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1]) && exist) {
                     if (play_music) Mix_PlayMusic(music, 0);
                     if (play_music) Mix_PlayMusic(music2, 0);
+                    menu_ended = SDL_GetTicks();
+                    menu_lasted += menu_ended - menu_started;
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[2])) {
@@ -1949,6 +1971,7 @@ int main(int argc, char* argv[]) {
     int pu_started = 0, last_pu = 0, pu_placed_time = 0, pu_x = -1, pu_y = -1, pu_placed = 0;
     int game = 1;
     int dir = -1; // 0 levo, 1 gore, 2 desno, 3 dole
+    bool left = false;
 
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -1985,7 +2008,7 @@ skok:
                     strcpy(curr_tank, "images/tank3.bmp");
                 }
                 else if (event.key.keysym.sym == SDLK_SPACE) {
-                    Uint32 curr_time = SDL_GetTicks();
+                    Uint32 curr_time = getGameTime();
                     if (curr_time - last_shot > shoot_cooldown) {
                         if (play_music) Mix_PlayMusic(shoot_sound, 0);
                         x = tank.x / tank.w;
@@ -2059,10 +2082,12 @@ skok:
                     goto skok;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & zavrsi_rect)) {
+                    updateHighScore(score);
                     meni_hover = false, zavrsi_hover = false;
                     if (play_music) Mix_PlayMusic(music, 0);
                     SDL_SetCursor(arrow_cursor);
                     exist = 0;
+                    menu_lasted = SDL_GetTicks();
                     goto skok;
                 }
             }
@@ -2075,12 +2100,12 @@ skok:
             Mix_PlayMusic(exp_sound, 0);
         }
         powerUp(&power_up, &pu_started, &last_pu, &pu_placed_time, map, &pu_x, &pu_y, &pu_placed, enemies, renderer);
-        drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed, pu_placed_time, SDL_GetTicks());
+        drawPowerUp(renderer, map, tile_size, pu_x, pu_y, pu_placed, pu_placed_time, getGameTime());
         move_tank(renderer, map, dir, enemies);
 
-        Uint32 curr_time = SDL_GetTicks();
+        Uint32 curr_time = getGameTime();
         if (curr_time - last_spawn > spawn_time) {
-            spawn_enemies(enemies, 0);
+            spawn_enemies(enemies, diff);
             last_spawn = curr_time;
         }
         if (curr_time - last_move > enemy_speed && power_up != 2) {
