@@ -454,52 +454,42 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
         for (int j = 0; j < N; j++) {
             switch (bullets[i][j]) {
             case 1:
-                if (i > 0 && enemies[i - 1][j]) {
-                    kill_enemy(i - 1, j, map, enemies, renderer, explosion);
-                    bullets[i - 1][j] = 1;
-                }
-                else if (i - 1 == tank.x / tile_size && j == tank.y / tile_size) {
-                    kill_player(tile_size, pu);
-                    explosion[i - 1][j] = 12;
-                }
-                SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 270, NULL, SDL_FLIP_NONE);
-                if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
-                    if (!bullets[i - 1][j]) bullets[i - 1][j] = 1;
-                    else bullets[i - 1][j] = 0;
-                }
-                else if (i > 0 && (map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9 || (map[i - 1][j] == 10 && pu == 6))) { //!!!
-                    map[i - 1][j] = 2;
-                    explosion[i - 1][j] = 12;
-                    SDL_Delay(50);
-                }
-                else if (i > 0 && !(map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9)) {
-                    explosion[i - 1][j] = 12;
-                    SDL_Delay(50);
+            case 5:
+                if (i > 0) {
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 270, NULL, SDL_FLIP_NONE);
+                    if (!(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
+                        if (!bullets[i - 1][j]) bullets[i - 1][j] = bullets[i][j];
+                        else bullets[i - 1][j] = 0;
+                    }
+                    else if ((map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9 || (map[i - 1][j] == 10 && pu == 6 && bullets[i][j] == 1))) { //!!!
+                        map[i - 1][j] = 2;
+                        explosion[i - 1][j] = 12;
+                        SDL_Delay(50);
+                    }
+                    else if (!(map[i - 1][j] == 7 || map[i - 1][j] == 8 || map[i - 1][j] == 9)) {
+                        explosion[i - 1][j] = 12;
+                        SDL_Delay(50);
+                    }
                 }
                 bullets[i][j] = 0;
                 break;
             case 2:
-                if (j > 0 && enemies[i][j - 1]) {
-                    kill_enemy(i, j - 1, map, enemies, renderer, explosion);
-                    bullets[i][j - 1] = 1;
-                }
-                else if (i == tank.x / tile_size && j - 1 == tank.y / tile_size) {
-                    kill_player(tile_size, pu);
-                    explosion[i][j - 1] = 12;
-                }
-                SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 0, NULL, SDL_FLIP_NONE);
-                if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
-                    if (!bullets[i][j - 1]) bullets[i][j - 1] = 2;
-                    else bullets[i][j - 1] = 0;
-                }
-                else if (j > 0 && (map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9 || (map[i][j - 1] == 10 && pu == 6))) {//!!!
-                    map[i][j - 1] = 2;
-                    explosion[i][j - 1] = 12;
-                    SDL_Delay(50);
-                }
-                else if (j > 0 && !(map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9)) {
-                    explosion[i][j - 1] = 12;
-                    SDL_Delay(50);
+            case 6:
+                if (j > 0) {
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 0, NULL, SDL_FLIP_NONE);
+                    if (!(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
+                        if (!bullets[i][j - 1]) bullets[i][j - 1] = bullets[i][j];
+                        else bullets[i][j - 1] = 0;
+                    }
+                    else if (map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9 || (map[i][j - 1] == 10 && pu == 6 && bullets[i][j] == 2)) {//!!!
+                        map[i][j - 1] = 2;
+                        explosion[i][j - 1] = 12;
+                        SDL_Delay(50);
+                    }
+                    else if (!(map[i][j - 1] == 7 || map[i][j - 1] == 8 || map[i][j - 1] == 9)) {
+                        explosion[i][j - 1] = 12;
+                        SDL_Delay(50);
+                    }
                 }
                 bullets[i][j] = 0;
                 break;
@@ -512,52 +502,42 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
         for (int j = N - 1; j >= 0; j--) {
             switch (bullets[i][j]) {
             case 3:
-                if (i < N - 1 && enemies[i + 1][j]) {
-                    kill_enemy(i + 1, j, map, enemies, renderer, explosion);
-                    bullets[i + 1][j] = 1;
-                }
-                else if (i + 1 == tank.x / tile_size && j == tank.y / tile_size) {
-                    kill_player(tile_size, pu);
-                    explosion[i + 1][j] = 12;
-                }
-                SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 90, NULL, SDL_FLIP_NONE);
-                if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
-                    if (!bullets[i + 1][j]) bullets[i + 1][j] = 3;
-                    else bullets[i + 1][j] = 0;
-                }
-                else if (i < N - 1 && (map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9 || (map[i + 1][j] == 10 && pu == 6))) { //!!!
-                    map[i + 1][j] = 2;
-                    explosion[i + 1][j] = 12;
-                    SDL_Delay(50);
-                }
-                else if (i < N - 1 && !(map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9)) {
-                    explosion[i + 1][j] = 12;
-                    SDL_Delay(50);
+            case 7:
+                if (i < N - 1) {
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 90, NULL, SDL_FLIP_NONE);
+                    if (!(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
+                        if (!bullets[i + 1][j]) bullets[i + 1][j] = bullets[i][j];
+                        else bullets[i + 1][j] = 0;
+                    }
+                    else if (map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9 || (map[i + 1][j] == 10 && pu == 6 && bullets[i][j] == 3)) { //!!!
+                        map[i + 1][j] = 2;
+                        explosion[i + 1][j] = 12;
+                        SDL_Delay(50);
+                    }
+                    else if (!(map[i + 1][j] == 7 || map[i + 1][j] == 8 || map[i + 1][j] == 9)) {
+                        explosion[i + 1][j] = 12;
+                        SDL_Delay(50);
+                    }
                 }
                 bullets[i][j] = 0;
                 break;
             case 4:
-                if (j < N - 1 && enemies[i][j + 1]) {
-                    kill_enemy(i, j + 1, map, enemies, renderer, explosion);
-                    bullets[i][j + 1] = 1;
-                }
-                else if (i == tank.x / tile_size && j + 1 == tank.y / tile_size) {
-                    kill_player(tile_size, pu);
-                    explosion[i][j + 1] = 12;
-                }
-                SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 180, NULL, SDL_FLIP_NONE);
-                if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)) {
-                    if (!bullets[i][j + 1]) bullets[i][j + 1] = 4;
-                    else bullets[i][j + 1] = 0;
-                }
-                else if (j < N - 1 && (map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9 || (map[i][j + 1] == 10 && pu == 6))) { //!!!
-                    map[i][j + 1] = 2;
-                    explosion[i][j + 1] = 12;
-                    SDL_Delay(50);
-                }
-                else if (j < N - 1 && !(map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9)) {
-                    explosion[i][j + 1] = 12;
-                    SDL_Delay(50);
+            case 8:
+                if (j < N - 1) {
+                    SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 180, NULL, SDL_FLIP_NONE);
+                    if (!(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)) {
+                        if (!bullets[i][j + 1]) bullets[i][j + 1] = bullets[i][j];
+                        else bullets[i][j + 1] = 0;
+                    }
+                    else if (map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9 || (map[i][j + 1] == 10 && pu == 6 && bullets[i][j] == 4)) { //!!!
+                        map[i][j + 1] = 2;
+                        explosion[i][j + 1] = 12;
+                        SDL_Delay(50);
+                    }
+                    else if (!(map[i][j + 1] == 7 || map[i][j + 1] == 8 || map[i][j + 1] == 9)) {
+                        explosion[i][j + 1] = 12;
+                        SDL_Delay(50);
+                    }
                 }
                 bullets[i][j] = 0;
                 break;
@@ -566,35 +546,29 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
             }
         }
     }
+    for (int i = 0;i < N;i++) {
+        for (int j = 0;j < N;j++) {
+            if (bullets[i][j] && i == tank.x / tile_size && j == tank.y / tile_size) {
+                kill_player(tile_size, pu);
+                explosion[i][j] = 12;
+                bullets[i][j] = 0;
+            }
+            else if (bullets[i][j] && bullets[i][j] < 5 && enemies[i][j]) {
+                kill_enemy(i, j, map, enemies, renderer, explosion);
+                bullets[i][j] = 0;
+            }
+            else if(enemies[i][j] && bullets[i][j])
+                bullets[i][j] = 0;
+        }
+    }
 
 }
 
 void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int** enemies, int** explosion, int enemy_x, int enemy_y, int direction) {
-    SDL_Surface* bullet_s = SDL_LoadBMP("images/bullet.bmp");
-    SDL_Texture* bullet_t = SDL_CreateTextureFromSurface(renderer, bullet_s);
-    SDL_FreeSurface(bullet_s);
-
-    SDL_Rect tile[MAX][MAX];
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            tile[i][j].x = i * tile_size + tile_size / 4;
-            tile[i][j].y = j * tile_size + tile_size / 4;
-            tile[i][j].w = tile_size / 2;
-            tile[i][j].h = tile_size / 2;
-        }
-    }
-
-    SDL_Rect select_tile;
-    select_tile.x = 0;
-    select_tile.y = 0;
-    select_tile.w = tile_size;
-    select_tile.h = tile_size;
-
-    // pucanje metka u zadatom pravcu
     switch (direction) {
     case 0: // levo
         if (enemy_x > 0 && map[enemy_x - 1][enemy_y] > 1 && map[enemy_x - 1][enemy_y] < 10 && !enemies[enemy_x - 1][enemy_y]) {
-            bullets[enemy_x - 1][enemy_y] = 1;
+            bullets[enemy_x - 1][enemy_y] = 5;
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 5;
             }
@@ -605,7 +579,7 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
         break;
     case 1: // gore
         if (enemy_y > 0 && map[enemy_x][enemy_y - 1] > 1 && map[enemy_x][enemy_y - 1] < 10 && !enemies[enemy_x][enemy_y - 1]) {
-            bullets[enemy_x][enemy_y - 1] = 2;
+            bullets[enemy_x][enemy_y - 1] = 6;
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 6;
             }
@@ -616,7 +590,7 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
         break;
     case 2: // desno
         if (enemy_x < N - 1 && map[enemy_x + 1][enemy_y] > 1 && map[enemy_x + 1][enemy_y] < 10 && !enemies[enemy_x + 1][enemy_y]) {
-            bullets[enemy_x + 1][enemy_y] = 3;
+            bullets[enemy_x + 1][enemy_y] = 7;
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 7;
             }
@@ -627,7 +601,7 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
         break;
     case 3: // dole
         if (enemy_y < N - 1 && map[enemy_x][enemy_y + 1] > 1 && map[enemy_x][enemy_y + 1] < 10 && !enemies[enemy_x][enemy_y + 1]) {
-            bullets[enemy_x][enemy_y + 1] = 4;
+            bullets[enemy_x][enemy_y + 1] = 8;
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 8;
             }
@@ -639,8 +613,6 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
     default:
         break;
     }
-
-    SDL_DestroyTexture(bullet_t);
 }
 
 void startPu(int* power_up, int** map, int* last_pu, int* pu_placed, int* pu_x, int* pu_y, int* pu_started, int* pu_placed_time, int** enemies, SDL_Renderer* renderer, int** explosion) {
