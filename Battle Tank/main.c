@@ -15,7 +15,8 @@ static char curr_tank[50] = "images/tank1.bmp";
 static char diff[50] = "images/lako.bmp";
 static char mapsize[50] = "images/10.bmp";
 static char music_icon[50] = "images/music.bmp";
-int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10;
+static int angle = 0;
+int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10, look = 1;
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0, menu_lasted = 0;
 Uint32 enemy_speed = 600;
@@ -236,21 +237,29 @@ void move_tank(SDL_Renderer* renderer, int** map, int dir, int** enemies) {
 
     switch (dir) {
     case 0: //levo
+        look = 0;
+        angle = 270;
         if (x > 0 && map[x - 1][y] > 1 && map[x - 1][y] < 7 && !enemies[x - 1][y]) {
             tank.x = tank.x - tank.w;
         }
         break;
     case 1: //gore
+        look = 1;
+        angle = 0;
         if (y > 0 && map[x][y - 1] > 1 && map[x][y - 1] < 7 && !enemies[x][y - 1]) {
             tank.y = tank.y - tank.w;
         }
         break;
     case 2: //desno
+        look = 2;
+        angle = 90;
         if (x < N - 1 && map[x + 1][y] > 1 && map[x + 1][y] < 7 && !enemies[x + 1][y]) {
             tank.x = tank.x + tank.w;
         }
         break;
     case 3: //dole
+        look = 3;
+        angle = 180;
         if (y < N - 1 && map[x][y + 1] > 1 && map[x][y + 1] < 7 && !enemies[x][y + 1]) {
             tank.y = tank.y + tank.w;
         }
@@ -258,7 +267,7 @@ void move_tank(SDL_Renderer* renderer, int** map, int dir, int** enemies) {
     default:
         break;
     }
-    SDL_RenderCopy(renderer, tank_t, &select_tile, &tank);
+    SDL_RenderCopyEx(renderer, tank_t, &select_tile, &tank, angle, NULL, SDL_FLIP_NONE);
 
     SDL_FreeSurface(tank_s);
     SDL_DestroyTexture(tank_t);
@@ -280,15 +289,23 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
 
     TTF_Font* font;
     font = TTF_OpenFont("fonts/BAD GRUNGE.ttf", 200);
+    TTF_Font* font2 = TTF_OpenFont("fonts/Mantey-Black.ttf", 30);
     SDL_Surface* text;
+    SDL_Surface* text2;
     SDL_Texture* text_texture;
+    SDL_Texture* text2_texture;
     SDL_Color color = { 255, 255, 255 };
+    char txt[100];
 
     text = TTF_RenderText_Solid(font, "GAME OVER", color);
     text_texture = SDL_CreateTextureFromSurface(renderer, text);
+    sprintf(txt, "Osvojeni rezultat: %d", score);
+    text2 = TTF_RenderText_Solid(font2, txt, color);
+    text2_texture = SDL_CreateTextureFromSurface(renderer, text2);
 
     int text_y = 0;
     SDL_Rect dest = { (window_width - text->w) / 2, text_y, text->w, text->h };
+    SDL_Rect dest2 = { (window_width - text2->w) / 2 , text2->h * 3, text2->w, text2->h };
 
     SDL_Rect buttons[2];
     int button_width = 170;
@@ -325,6 +342,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
         }
 
         SDL_RenderCopy(renderer, text_texture, NULL, &dest);
+        SDL_RenderCopy(renderer, text2_texture, NULL, &dest2);
 
         for (int i = 0; i < 2; i++) {
             SDL_SetRenderDrawColor(renderer, 150, 150, 150, 250);
@@ -364,8 +382,8 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
-                    for (int i = 0;i < N;i++) {
-                        for (int j = 0;j < N;j++) {
+                    for (int i = 0; i < N; i++) {
+                        for (int j = 0; j < N; j++) {
                             (*enemies)[i][j] = 0;
                         }
                     }
@@ -377,9 +395,6 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
-                    /*draw_menu(renderer, window_width, window_height, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
-                        &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size,
-                        window, &size, music, music2);*/
                     menu_lasted = SDL_GetTicks();
                     skoci = true;
                     running = false;
@@ -392,6 +407,8 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     SDL_DestroyTexture(ni_t);
     SDL_DestroyTexture(text_texture);
     SDL_FreeSurface(text);
+    SDL_FreeSurface(text2);
+    SDL_DestroyTexture(text2_texture);
 }
 
 void kill_enemy(int i, int j, int** map, int** enemies, SDL_Renderer* renderer, int** explosion) {
@@ -443,6 +460,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                 }
                 else if (i - 1 == tank.x / tile_size && j == tank.y / tile_size) {
                     kill_player(tile_size, pu);
+                    explosion[i - 1][j] = 12;
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 270, NULL, SDL_FLIP_NONE);
                 if (i > 0 && !(map[i - 1][j] >= 7 && map[i - 1][j] <= 10)) {
@@ -467,6 +485,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                 }
                 else if (i == tank.x / tile_size && j - 1 == tank.y / tile_size) {
                     kill_player(tile_size, pu);
+                    explosion[i][j - 1] = 12;
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 0, NULL, SDL_FLIP_NONE);
                 if (j > 0 && !(map[i][j - 1] >= 7 && map[i][j - 1] <= 10)) {
@@ -499,6 +518,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                 }
                 else if (i + 1 == tank.x / tile_size && j == tank.y / tile_size) {
                     kill_player(tile_size, pu);
+                    explosion[i + 1][j] = 12;
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 90, NULL, SDL_FLIP_NONE);
                 if (i < N - 1 && !(map[i + 1][j] >= 7 && map[i + 1][j] <= 10)) {
@@ -523,6 +543,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                 }
                 else if (i == tank.x / tile_size && j + 1 == tank.y / tile_size) {
                     kill_player(tile_size, pu);
+                    explosion[i][j + 1] = 12;
                 }
                 SDL_RenderCopyEx(renderer, bullet_t, &select_tile, &tile[i][j], 180, NULL, SDL_FLIP_NONE);
                 if (j < N - 1 && !(map[i][j + 1] >= 7 && map[i][j + 1] <= 10)) {
@@ -1326,7 +1347,8 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
     *size = current.h / SIZE * SIZE;
     *tile_size = *size / N;
 
-    strcpy(curr_tank, "images/tank1.bmp");
+    angle = 0;
+    look = 1;
     score = 0, lives = 2, tanks_left = bot_difficulty;
     *map = (int**)calloc(N, sizeof(int*));
     if (*map == NULL) {
@@ -1379,7 +1401,6 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
     *pu_x = -1;
     *pu_y = -1;
     *pu_placed = 0;
-    //if(diff == )
 
     *game = 1;
     *dir = -1; // 0 levo, 1 gore, 2 desno, 3 dole
@@ -1411,14 +1432,17 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
     SDL_FreeSurface(tezina_botova_s);
     SDL_Surface* map_size_s = SDL_LoadBMP(mapsize);
     SDL_Texture* map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
+    SDL_Surface* skin_s = SDL_LoadBMP(curr_tank);
+    SDL_Texture* skin_t = SDL_CreateTextureFromSurface(renderer, skin_s);
 
     bool running = true;
-    bool hover1 = false, hover2 = false, hover3 = false, hover4 = false, hover5 = false;
+    bool hover1 = false, hover2 = false, hover3 = false, hover4 = false, hover5 = false, hover6 = false, hover7 = false;
+    int old_diff = bot_difficulty, old_size = N;
     while (running) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        SDL_Rect tb_rect = { (window_width - *size) / 4, window_height / 4, *size / 2, *size / 12 };
+        SDL_Rect tb_rect = { (window_width - *size) / 4, window_height / 6, *size / 2, *size / 12 };
         SDL_RenderCopy(renderer, tezina_botova_t, NULL, &tb_rect);
 
         SDL_Rect difficulty_rect = { tb_rect.x + tb_rect.w + *size / 4, tb_rect.y, *size / 3, *size / 12 };
@@ -1428,7 +1452,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
         SDL_Rect rightarrow1_rect = { difficulty_rect.x + difficulty_rect.w, difficulty_rect.y, 50, 50 };
         SDL_RenderCopy(renderer, rightarrow_t, NULL, &rightarrow1_rect);
 
-        SDL_Rect vm_rect = { (window_width - *size) / 4, window_height / 2, *size / 2, *size / 12 };
+        SDL_Rect vm_rect = { (window_width - *size) / 4, window_height / 3, *size / 2, *size / 12 };
         SDL_RenderCopy(renderer, velicina_mape_t, NULL, &vm_rect);
 
         SDL_Rect map_size_rect = { vm_rect.x + vm_rect.w + *size / 4, vm_rect.y, *size / 9, *size / 12 };
@@ -1438,7 +1462,14 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
         SDL_Rect rightarrow2_rect = { map_size_rect.x + map_size_rect.w, map_size_rect.y, 50, 50 };
         SDL_RenderCopy(renderer, rightarrow_t, NULL, &rightarrow2_rect);
 
-        SDL_Rect potvrdi_rect = { (window_width - 200) / 2, (3 * window_height) / 4, 200, 50 };
+        SDL_Rect skin_rect = { (window_width - *size / 5) / 2, window_height / 2 + 20, *size / 5, *size / 5 };
+        SDL_RenderCopy(renderer, skin_t, NULL, &skin_rect);
+        SDL_Rect leftarrow3_rect = { skin_rect.x - 100, skin_rect.y + 40, 50, 50 };
+        SDL_RenderCopy(renderer, leftarrow_t, NULL, &leftarrow3_rect);
+        SDL_Rect rightarrow3_rect = { skin_rect.x + skin_rect.w + 50, skin_rect.y + 40, 50, 50 };
+        SDL_RenderCopy(renderer, rightarrow_t, NULL, &rightarrow3_rect);
+
+        SDL_Rect potvrdi_rect = { (window_width - 200) / 2, window_height - 80, 200, 50 };
         SDL_RenderCopy(renderer, potvrdi_t, NULL, &potvrdi_rect);
         SDL_RenderPresent(renderer);
         SDL_Event event;
@@ -1455,8 +1486,10 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                 hover3 = SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow2_rect);
                 hover4 = SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow2_rect);
                 hover5 = SDL_PointInRect(&(SDL_Point) { x, y }, & potvrdi_rect);
+                hover6 = SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow3_rect);
+                hover7 = SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow3_rect);
 
-                if (hover1 || hover2 || hover3 || hover4 || hover5) {
+                if (hover1 || hover2 || hover3 || hover4 || hover5 || hover6 || hover7) {
                     SDL_SetCursor(hand_cursor);
                 }
                 else {
@@ -1483,7 +1516,6 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         bot_difficulty = 10;
                         enemy_speed = 600;
                         spawn_time = 10000;
-                        exist = 0;
                     }
                     else if (bot_difficulty == 20) {
                         strcpy(diff, "images/srednje.bmp");
@@ -1492,7 +1524,6 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         bot_difficulty = 15;
                         enemy_speed = 500;
                         spawn_time = 8000;
-                        exist = 0;
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow1_rect)) {
@@ -1503,8 +1534,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
-                        spawn_time = 8000;
-                        exist = 0;
+                        spawn_time = 6500;
                     }
                     else if (bot_difficulty == 15) {
                         strcpy(diff, "images/tesko.bmp");
@@ -1512,9 +1542,6 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 20;
                         enemy_speed = 400;
-                        spawn_time = 6500;
-
-                        exist = 0;
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow2_rect)) {
@@ -1524,14 +1551,12 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         map_size_s = SDL_LoadBMP(mapsize);
                         map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
                         N = 10;
-                        exist = 0;
                     }
                     else if (N == 20) {
                         strcpy(mapsize, "images/15.bmp");
                         map_size_s = SDL_LoadBMP(mapsize);
                         map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
                         N = 15;
-                        exist = 0;
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow2_rect)) {
@@ -1541,14 +1566,28 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         map_size_s = SDL_LoadBMP(mapsize);
                         map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
                         N = 15;
-                        exist = 0;
                     }
                     else if (N == 15) {
                         strcpy(mapsize, "images/20.bmp");
                         map_size_s = SDL_LoadBMP(mapsize);
                         map_size_t = SDL_CreateTextureFromSurface(renderer, map_size_s);
                         N = 20;
-                        exist = 0;
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point) { x, y }, & leftarrow3_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
+                    if (curr_tank[11] != '1') {
+                        curr_tank[11] -= 1;
+                        skin_s = SDL_LoadBMP(curr_tank);
+                        skin_t = SDL_CreateTextureFromSurface(renderer, skin_s);
+                    }
+                }
+                else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow3_rect)) {
+                    if (play_music) Mix_PlayMusic(music, 0);
+                    if (curr_tank[11] != '5') {
+                        curr_tank[11] += 1;
+                        skin_s = SDL_LoadBMP(curr_tank);
+                        skin_t = SDL_CreateTextureFromSurface(renderer, skin_s);
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & potvrdi_rect)) {
@@ -1558,9 +1597,13 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     *size = current.h / SIZE * SIZE;
                     *tile_size = *size / N;
 
-                    set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
-                        pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
-                        dir, tile_size, renderer, window, size);
+                    if (old_size != N || old_diff != bot_difficulty)
+                    {
+                        exist = 0;
+                        set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
+                            pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
+                            dir, tile_size, renderer, window, size);
+                    }
                     running = false;
                 }
             }
@@ -1570,6 +1613,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
     SDL_FreeSurface(difficulty_s);
     SDL_FreeSurface(map_size_s);
     SDL_FreeSurface(potvrdi_s);
+    SDL_FreeSurface(skin_s);
 
     SDL_DestroyTexture(leftarrow_t);
     SDL_DestroyTexture(rightarrow_t);
@@ -1578,6 +1622,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
     SDL_DestroyTexture(velicina_mape_t);
     SDL_DestroyTexture(tezina_botova_t);
     SDL_DestroyTexture(map_size_t);
+    SDL_DestroyTexture(skin_t);
 }
 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
@@ -1687,8 +1732,7 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
                     set_game(map, enemies, explosion, directions, bonuses, bullets, power_up,
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
-                    menu_ended = SDL_GetTicks();
-                    menu_lasted = SDL_GetTicks();
+                    menu_ended = menu_lasted = SDL_GetTicks();
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1]) && exist) {
@@ -1958,7 +2002,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    //start_animation(renderer, size + hud_width, size, intro);
+    start_animation(renderer, size + hud_width, size, intro);
 
     int** map = NULL;
     int** enemies = NULL;
@@ -1993,19 +2037,19 @@ skok:
             else if (event.type == SDL_KEYDOWN) {
                 if (event.key.keysym.sym == SDLK_LEFT) {
                     dir = 0;
-                    strcpy(curr_tank, "images/tank0.bmp");
+                    look = 0;
                 }
                 else if (event.key.keysym.sym == SDLK_UP) {
                     dir = 1;
-                    strcpy(curr_tank, "images/tank1.bmp");
+                    look = 1;
                 }
                 else if (event.key.keysym.sym == SDLK_RIGHT) {
                     dir = 2;
-                    strcpy(curr_tank, "images/tank2.bmp");
+                    look = 2;
                 }
                 else if (event.key.keysym.sym == SDLK_DOWN) {
                     dir = 3;
-                    strcpy(curr_tank, "images/tank3.bmp");
+                    look = 3;
                 }
                 else if (event.key.keysym.sym == SDLK_SPACE) {
                     Uint32 curr_time = getGameTime();
@@ -2013,35 +2057,35 @@ skok:
                         if (play_music) Mix_PlayMusic(shoot_sound, 0);
                         x = tank.x / tank.w;
                         y = tank.y / tank.w;
-                        bullets[x][y] = curr_tank[11] - '0' + 1;
+                        bullets[x][y] = look + 1;
                         if (power_up == 5) {
-                            if (curr_tank[11] - '0' == 0) {
+                            if (look == 0) {
                                 if (x > 0 && map[x - 1][y] > 1 && map[x - 1][y] < 7) {
                                     if (enemies[x - 1][y]) {
                                         kill_enemy(x - 1, y, map, enemies, renderer, explosion);
                                     }
                                     else {
-                                        bullets[x - 1][y] = curr_tank[11] - '0' + 1;
+                                        bullets[x - 1][y] = look + 1;
                                     }
                                 }
                             }
-                            else if (curr_tank[11] - '0' == 1) {
+                            else if (look == 1) {
                                 if (y > 0 && map[x][y - 1] > 1 && map[x][y - 1] < 7) {
                                     if (enemies[x][y - 1]) {
                                         kill_enemy(x, y - 1, map, enemies, renderer, explosion);
                                     }
                                     else {
-                                        bullets[x][y - 1] = curr_tank[11] - '0' + 1;
+                                        bullets[x][y - 1] = look + 1;
                                     }
                                 }
                             }
-                            else if (curr_tank[11] - '0' == 2) {
+                            else if (look == 2) {
                                 if (x < N - 1 && map[x][y] > 1 && map[x + 1][y] < 7) {
                                     if (enemies[x + 1][y]) {
                                         kill_enemy(x + 1, y, map, enemies, renderer, explosion);
                                     }
                                     else {
-                                        bullets[x + 1][y] = curr_tank[11] - '0' + 1;
+                                        bullets[x + 1][y] = look + 1;
                                     }
                                 }
                             }
@@ -2051,7 +2095,7 @@ skok:
                                         kill_enemy(x, y + 1, map, enemies, renderer, explosion);
                                     }
                                     else {
-                                        bullets[x][y + 1] = curr_tank[11] - '0' + 1;
+                                        bullets[x][y + 1] = look + 1;
                                     }
                                 }
                             }
@@ -2125,6 +2169,7 @@ skok:
                 &size, music, music2);
         }
         if (bullets[N / 2][N - 1]) {
+            if (play_music) Mix_PlayMusic(game_over_sound, 0);
             game_over(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
                 &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
                 &size, music, music2);
