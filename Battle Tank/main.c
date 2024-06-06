@@ -404,6 +404,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                         }
                     }
                     menu_lasted = SDL_GetTicks();
+                    last_spawn = getGameTime();
                     running = false;
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[1])) {
@@ -412,6 +413,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
                         pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game,
                         dir, &tile_size, renderer, window, &size);
                     menu_lasted = SDL_GetTicks();
+                    last_spawn = getGameTime();
                     skoci = true;
                     running = false;
                 }
@@ -2043,6 +2045,8 @@ skok:
         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
         &size, music, music2);
 
+    last_spawn = last_move = getGameTime();
+    
     while (game) {
 
         SDL_Event event;
