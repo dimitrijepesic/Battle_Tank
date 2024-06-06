@@ -16,6 +16,7 @@ static char diff[50] = "images/lako.bmp";
 static char mapsize[50] = "images/10.bmp";
 static char music_icon[50] = "images/music.bmp";
 static int angle = 0;
+
 int score = 0, lives = 2, tanks_left = 10, N = 10, play_music = 1, exist = 0, bot_difficulty = 10, look = 1;
 Uint32 last_shot = 0, shoot_cooldown = 500;
 static Uint32 last_move = 0, menu_lasted = 0;
@@ -24,6 +25,8 @@ Uint32 spawn_time = 10000, last_spawn = 0;
 SDL_Rect tank;
 SDL_Rect meni_rect, zavrsi_rect;
 bool skoci = false;
+int br_tenk = 0;
+int dif = 0;
 
 Uint32** enemy_last_turn;
 Uint32** enemy_last_shot;
@@ -42,28 +45,40 @@ void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, i
 void updateHighScore(int sc);
 void readHighScores(SDL_Renderer* renderer, int width, int height, Mix_Music* music);
 
+int*** enemy_visited;
+
 void initialize_enemy_timers() {
     enemy_last_turn = malloc(N * sizeof(Uint32*));
     enemy_last_shot = malloc(N * sizeof(Uint32*));
+    enemy_visited = malloc(N * sizeof(int**));
     for (int i = 0; i < N; i++) {
         enemy_last_turn[i] = malloc(N * sizeof(Uint32));
         enemy_last_shot[i] = malloc(N * sizeof(Uint32));
+        enemy_visited[i] = malloc(N * sizeof(int*));
         for (int j = 0; j < N; j++) {
             enemy_last_turn[i][j] = 0;
             enemy_last_shot[i][j] = 0;
+            enemy_visited[i][j] = malloc(N * sizeof(int));
+            for (int k = 0; k < N; k++) {
+                enemy_visited[i][j][k] = 0;
+            }
         }
     }
 }
 
 void free_enemy_timers() {
     for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            free(enemy_visited[i][j]);
+        }
         free(enemy_last_turn[i]);
         free(enemy_last_shot[i]);
+        free(enemy_visited[i]);
     }
     free(enemy_last_turn);
     free(enemy_last_shot);
+    free(enemy_visited);
 }
-
 
 static int redosled = 0;
 
@@ -276,6 +291,7 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
     int* size, Mix_Music* music, Mix_Music* music2) {
+
     exist = 0;
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -403,6 +419,13 @@ void game_over(SDL_Renderer* renderer, int window_width, int window_height, int*
         }
         SDL_Delay(20);
     }
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            (*enemies)[i][j] = 0;
+        }
+    }
+
     SDL_DestroyTexture(mn_t);
     SDL_DestroyTexture(ni_t);
     SDL_DestroyTexture(text_texture);
@@ -546,8 +569,8 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
             }
         }
     }
-    for (int i = 0;i < N;i++) {
-        for (int j = 0;j < N;j++) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
             if (bullets[i][j] && i == tank.x / tile_size && j == tank.y / tile_size) {
                 kill_player(tile_size, pu);
                 explosion[i][j] = 12;
@@ -557,7 +580,7 @@ void shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map, int*
                 kill_enemy(i, j, map, enemies, renderer, explosion);
                 bullets[i][j] = 0;
             }
-            else if(enemies[i][j] && bullets[i][j])
+            else if (enemies[i][j] && bullets[i][j])
                 bullets[i][j] = 0;
         }
     }
@@ -738,6 +761,7 @@ bool not_in(int x, int* niz, int length) {
     return true;
 }
 
+
 void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
     int val[] = { 1, 7, 8, 9, 10, 11 };
     int val_length = 6;
@@ -760,10 +784,12 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
         int ny = y + move[idx][1];
         if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
             not_in(map[nx][ny], val, val_length) &&
-            enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas)) {
+            enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas) &&
+            !enemy_visited[nx][ny][idx]) {
             next[0] = nx;
             next[1] = ny;
             *dir = idx;
+            enemy_visited[x][y][idx] = 1;
             return;
         }
     }
@@ -827,13 +853,12 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
     free(queue);
 }
 
-int tank_optioning(int diff) {
-    static int br = 0;
-    br++;
-    switch (diff) {
+int tank_optioning(int difficulty) {
+    br_tenk++;
+    switch (difficulty) {
     case 0: {
-        if (br == 4) {
-            br = 0;
+        if (br_tenk == 4) {
+            br_tenk = 0;
             return 1;
         }
         else return 0;
@@ -842,8 +867,8 @@ int tank_optioning(int diff) {
         return rand() % 2;
     }
     case 2: {
-        if (br == 2) {
-            br = 0;
+        if (br_tenk == 2) {
+            br_tenk = 0;
             return 1;
         }
         else return 0;
@@ -851,53 +876,60 @@ int tank_optioning(int diff) {
     }
 }
 
-void spawn_enemies(int** enemies, int diff) {
-    int spawn_points[2][2] = { {0,0}, {N - 1,0} };
-    int typee[] = { 0,1 }; // 0 - obican, 1 - spec
-    for (int i = 0; i < 2; i++) {
-        int x = spawn_points[i][0], y = spawn_points[i][1];
-        if (enemies[x][y] == 0) {
-            int promenljiva = tank_optioning(diff);
-            if (promenljiva == 0) {
-                if (x == 0) {
-                    enemies[x][y] = 3;
-                }
-                else {
-                    enemies[x][y] = 1;
-                }
+
+void spawn_enemies_left(int** enemies, int difficulty) {
+    int count = 0;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (enemies[i][j] > 0) {
+                count++;
             }
-            else {
-                if (x == 0) {
-                    enemies[x][y] = 7;
-                }
-                else {
-                    enemies[x][y] = 5;
-                }
-            }
+        }
+    }
+    int x = 0, y = 0;
+    if (enemies[x][y] == 0 && count < 5) {
+        int promenljiva = tank_optioning(difficulty);
+        if (promenljiva == 0) {
+            enemies[x][y] = 3;
+        } else {
+            enemies[x][y] = 7;
         }
     }
 }
 
-void baza(int** map, int* bazax, int* bazay) {
-    int i, j;
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
-            if (map[i][j] == 11) {
-                bazax = i;
-                bazay = j;
-                return;
+void spawn_enemies_right(int** enemies, int difficulty) {
+    int count = 0;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (enemies[i][j] > 0) {
+                count++;
             }
+        }
+    }
+    int x = N-1, y = 0;
+    if (enemies[x][y] == 0 && count<5) {
+        int promenljiva = tank_optioning(difficulty);
+        if (promenljiva == 0) {
+            enemies[x][y] = 1;
+        }
+        else {
+            enemies[x][y] = 5;
         }
     }
 }
 
 int check_tank_pos(int enemy_x, int enemy_y, int** map) {
+    int val[] = { 10, 11 };
+    int val_length = 2;
     int tank_x = tank.x / tank.w;
     int tank_y = tank.y / tank.h;
     int i = 0, j = 0;
     if (enemy_x == tank_x) {
         j = enemy_y;
         while (j != tank_y) {
+            if (!not_in(map[enemy_x][j], val, val_length)) {
+                return -1;
+            }
             if (enemy_y > tank_y) {
                 j--;
             }
@@ -910,6 +942,9 @@ int check_tank_pos(int enemy_x, int enemy_y, int** map) {
     if (enemy_y == tank_y) {
         j = enemy_y;
         while (j != tank_y) {
+            if (!not_in(map[i][enemy_y], val, val_length)) {
+                return -1;
+            }
             if (enemy_y > tank_y) {
                 j--;
             }
@@ -941,7 +976,7 @@ int check_base_pos(int enemy_x, int enemy_y, int** map) {
                 j++;
             }
         }
-        return (enemy_y > base_y) ? 3 : 1;
+        return (enemy_y > base_y) ? 1 : 3;
     }
 
     if (enemy_y == base_y) {
@@ -963,62 +998,56 @@ int check_base_pos(int enemy_x, int enemy_y, int** map) {
     return -1;
 }
 
-void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int** explosion, int** map, int** enemies, int N, int diff, int x_tar, int y_tar) {
+void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int** explosion, int** map, int** enemies, int N, int difficulty, int x_tar, int y_tar) {
     int** new_enemies = malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++) {
         new_enemies[i] = calloc(N, sizeof(int));
     }
 
-    int next[2];
     int dir; // dir: 3-levo 2-gore 1-desno 0-dole
     int tankx = tank.x / tank.w;
     int tanky = tank.y / tank.h;
-    int bazax = 0, bazay = 0;
-    baza(map, &bazax, &bazay);
     Uint32 curr_time = getGameTime();
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
+            int next[2] = { i,j };
             if (enemies[i][j] > 0) {
-                switch (diff) {
+                switch (difficulty) {
                 case 0:
-                case 1:
+                case 1: {
                     random_next(i, j, tankx, tanky, map, enemies, next, &dir);
                     break;
-                case 2:
+                }
+                case 2: {
                     if (enemies[i][j] < 5) {
-                        bfs_next(i, j, x_tar, y_tar, tankx, tanky, map, enemies, next, &dir);
+                        bfs_next(i, j, y_tar, x_tar, tankx, tanky, map, enemies, next, &dir);
                     }
                     else {
-                        bfs_next(i, j, bazax, bazay, tankx, tanky, map, enemies, next, &dir);
+                        bfs_next(i, j, N / 2, N - 1, tankx, tanky, map, enemies, next, &dir);
                     }
                     break;
-                default:
-                    next[0] = i;
-                    next[1] = j;
-                    dir = -1;
-                    break;
                 }
-
+                }
                 if (curr_time - enemy_last_turn[i][j] > turn_cooldown) {
                     enemy_last_turn[i][j] = curr_time;
 
                     if (enemies[i][j] < 5) {
                         switch (dir) {
-                        case 0: new_enemies[next[0]][next[1]] = 4; break;
-                        case 1: new_enemies[next[0]][next[1]] = 3; break;
-                        case 2: new_enemies[next[0]][next[1]] = 2; break;
-                        case 3: new_enemies[next[0]][next[1]] = 1; break;
-                        default: new_enemies[i][j] = enemies[i][j]; break;
+                        case 0: { new_enemies[next[0]][next[1]] = 4; break; }
+                        case 1: { new_enemies[next[0]][next[1]] = 3; break; }
+                        case 2: { new_enemies[next[0]][next[1]] = 2; break; }
+                        case 3: { new_enemies[next[0]][next[1]] = 1; break; }
+                        default: { new_enemies[i][j] = enemies[i][j]; break; }
                         }
                     }
                     else {
                         switch (dir) {
-                        case 0: new_enemies[next[0]][next[1]] = 8; break;
-                        case 1: new_enemies[next[0]][next[1]] = 7; break;
-                        case 2: new_enemies[next[0]][next[1]] = 6; break;
-                        case 3: new_enemies[next[0]][next[1]] = 5; break;
-                        default: new_enemies[i][j] = enemies[i][j]; break;
+                        case 0: { new_enemies[next[0]][next[1]] = 8; break; }
+                        case 1: { new_enemies[next[0]][next[1]] = 7; break; }
+                        case 2: { new_enemies[next[0]][next[1]] = 6; break; }
+                        case 3: { new_enemies[next[0]][next[1]] = 5; break; }
+                        default: { new_enemies[i][j] = enemies[i][j]; break; }
                         }
                     }
 
@@ -1033,9 +1062,6 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         enemy_last_shot[i][j] = curr_time + turn_cooldown;
                         enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, next[0], next[1], base_shoot_dir);
                     }
-                }
-                else {
-                    new_enemies[i][j] = enemies[i][j];
                 }
             }
         }
@@ -1484,6 +1510,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     if (bot_difficulty == 15) {
                         strcpy(diff, "images/lako.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
+                        dif = 0;
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 10;
                         enemy_speed = 600;
@@ -1492,6 +1519,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     else if (bot_difficulty == 20) {
                         strcpy(diff, "images/srednje.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
+                        dif = 1;
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
@@ -1503,6 +1531,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     if (bot_difficulty == 10) {
                         strcpy(diff, "images/srednje.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
+                        dif = 1;
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
@@ -1511,6 +1540,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                     else if (bot_difficulty == 15) {
                         strcpy(diff, "images/tesko.bmp");
                         difficulty_s = SDL_LoadBMP(diff);
+                        dif = 2;
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 20;
                         enemy_speed = 400;
@@ -2121,11 +2151,12 @@ skok:
 
         Uint32 curr_time = getGameTime();
         if (curr_time - last_spawn > spawn_time) {
-            spawn_enemies(enemies, diff);
+            spawn_enemies_left(enemies, dif);
+            spawn_enemies_right(enemies, dif);
             last_spawn = curr_time;
         }
         if (curr_time - last_move > enemy_speed && power_up != 2) {
-            update_enemy_pos(renderer, bullets, tile_size, explosion, map, enemies, N, 2, tank.x, tank.y);
+            update_enemy_pos(renderer, bullets, tile_size, explosion, map, enemies, N, dif, tank.x, tank.y);
             last_move = curr_time;
         }
         if (tank.x / tank.w == pu_x && tank.y / tank.w == pu_y) {
