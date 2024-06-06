@@ -761,10 +761,9 @@ bool not_in(int x, int* niz, int length) {
     return true;
 }
 
-
 void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
-    int val[] = { 1, 7, 8, 9, 10, 11 };
-    int val_length = 6;
+    int val[] = { 1, 10, 11 };
+    int val_length = 3;
     int move[4][2] = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
     int indices[] = { 0, 1, 2, 3 };
 
@@ -786,18 +785,18 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
             not_in(map[nx][ny], val, val_length) &&
             enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas) &&
             !enemy_visited[nx][ny][idx]) {
-            next[0] = nx;
-            next[1] = ny;
-            *dir = idx;
-            enemy_visited[x][y][idx] = 1;
-            return;
+                next[0] = nx;
+                next[1] = ny;
+                *dir = idx;
+                enemy_visited[x][y][idx] = 1;
+                return;
         }
     }
 }
 
 void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
-    int val[] = { 1, 7, 8, 9, 10, 11 };
-    int val_length = 6;
+    int val[] = { 1, 10, 11 };
+    int val_length = 3;
 
     int** visited = malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++) {
@@ -998,6 +997,15 @@ int check_base_pos(int enemy_x, int enemy_y, int** map) {
     return -1;
 }
 
+int check_brick_next(int enemy_x, int enemy_y, int** map) {
+    int val[] = {7, 8, 9};
+    if (!not_in(map[enemy_x][enemy_y], val , 3)) {
+        return 1;
+    }
+    return -1;
+}
+
+
 void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int** explosion, int** map, int** enemies, int N, int difficulty, int x_tar, int y_tar) {
     int** new_enemies = malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++) {
@@ -1062,6 +1070,13 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         enemy_last_shot[i][j] = curr_time + turn_cooldown;
                         enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, next[0], next[1], base_shoot_dir);
                     }
+
+                    int brick_next = check_brick_next(next[0], next[1], map);
+                    if (base_shoot_dir != -1 && curr_time - enemy_last_shot[i][j] > shoot_cooldown) {
+                        enemy_last_shot[i][j] = curr_time + turn_cooldown;
+                        enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, next[0], next[1], base_shoot_dir);
+                    }
+
                 }
             }
         }
