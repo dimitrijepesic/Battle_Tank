@@ -787,11 +787,11 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
             not_in(map[nx][ny], val, val_length) &&
             enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas) &&
             !enemy_visited[nx][ny][idx]) {
-                next[0] = nx;
-                next[1] = ny;
-                *dir = idx;
-                enemy_visited[x][y][idx] = 1;
-                return;
+            next[0] = nx;
+            next[1] = ny;
+            *dir = idx;
+            enemy_visited[x][y][idx] = 1;
+            return;
         }
     }
 }
@@ -892,7 +892,8 @@ void spawn_enemies_left(int** enemies, int difficulty) {
         int promenljiva = tank_optioning(difficulty);
         if (promenljiva == 0) {
             enemies[x][y] = 3;
-        } else {
+        }
+        else {
             enemies[x][y] = 7;
         }
     }
@@ -907,8 +908,8 @@ void spawn_enemies_right(int** enemies, int difficulty) {
             }
         }
     }
-    int x = N-1, y = 0;
-    if (enemies[x][y] == 0 && count<5) {
+    int x = N - 1, y = 0;
+    if (enemies[x][y] == 0 && count < 5) {
         int promenljiva = tank_optioning(difficulty);
         if (promenljiva == 0) {
             enemies[x][y] = 1;
@@ -1000,8 +1001,8 @@ int check_base_pos(int enemy_x, int enemy_y, int** map) {
 }
 
 int check_brick_next(int enemy_x, int enemy_y, int** map) {
-    int val[] = {7, 8, 9};
-    if (!not_in(map[enemy_x][enemy_y], val , 3)) {
+    int val[] = { 7, 8, 9 };
+    if (!not_in(map[enemy_x][enemy_y], val, 3)) {
         return 1;
     }
     return -1;
@@ -1271,6 +1272,14 @@ void drawHUD(SDL_Renderer* renderer, int power_up, int tile_size, bool meni_hove
     dest.y += text->h * 2 + 20;
     dest.w = text->w;
     SDL_RenderCopy(renderer, text_texture, NULL, &dest);
+
+    sprintf(tekst, "Vreme: %.2lf", (double)getGameTime() / 1000);
+    text = TTF_RenderText_Solid(font, tekst, color);
+    text_texture = SDL_CreateTextureFromSurface(renderer, text);
+    dest.y += text->h * 2 + 20;
+    dest.w = text->w;
+    SDL_RenderCopy(renderer, text_texture, NULL, &dest);
+
 
     SDL_Surface* pu_s = NULL;
     switch (power_up) {
@@ -2046,7 +2055,7 @@ skok:
         &size, music, music2);
 
     last_spawn = last_move = getGameTime();
-    
+
     while (game) {
 
         SDL_Event event;
