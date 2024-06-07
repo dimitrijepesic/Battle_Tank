@@ -769,6 +769,9 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
         }
     }
 }
+typedef struct {
+    int x, y;
+} Queue;
 
 void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
     int val[] = { 1, 10, 11 };
@@ -779,10 +782,6 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
         visited[i] = malloc(N * sizeof(int));
         memset(visited[i], -1, N * sizeof(int));
     }
-
-    typedef struct {
-        int x, y;
-    } Queue;
 
     Queue* queue = malloc(N * N * sizeof(Queue));
     int front = 0, rear = 0;
@@ -1101,26 +1100,27 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
 
                     int player_shoot_dir = check_tank_pos(i, j, map);
                     int base_shoot_dir = check_base_pos(i, j, map);
-
                     if (player_shoot_dir != -1) {
                         if (can_reach_target(i, j, tankx, tanky, map, player_shoot_dir) && curr_time - enemy_last_shot[i][j] > shoot_cooldown) {
                             enemy_last_shot[i][j] = curr_time + turn_cooldown;
                             enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, i, j, player_shoot_dir);
+                            new_enemies[i][j] = enemies[i][j];
                         }
                         else {
                             enemies[i][j] = player_shoot_dir + (enemies[i][j] > 4 ? 4 : 1);
+                            new_enemies[i][j] = enemies[i][j];
                         }
-                        new_enemies[i][j] = enemies[i][j];
                     }
                     else if (base_shoot_dir != -1) {
                         if (can_reach_target(i, j, N / 2, N - 1, map, base_shoot_dir) && curr_time - enemy_last_shot[i][j] > shoot_cooldown) {
                             enemy_last_shot[i][j] = curr_time + turn_cooldown;
                             enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, i, j, base_shoot_dir);
+                            new_enemies[i][j] = enemies[i][j];
                         }
                         else {
                             enemies[i][j] = base_shoot_dir + (enemies[i][j] > 4 ? 4 : 1);
+                            new_enemies[i][j] = enemies[i][j];
                         }
-                        new_enemies[i][j] = enemies[i][j];
                     }
                     else {
                         if (!not_in(map[next[0]][next[1]], bricks, val_length)) {
