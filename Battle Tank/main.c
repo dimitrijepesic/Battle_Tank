@@ -38,7 +38,8 @@ int getGameTime() {
 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
-    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music* music, Mix_Music* music2);
+    int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music* music, Mix_Music* music2,
+    Mix_Music* bck);
 void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, int*** bonuses, int*** bullets, int* power_up,
     int* pu_started, int* last_pu, int* pu_placed_time, int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir,
     int* tile_size, SDL_Renderer* renderer, SDL_Window* window, int* size);
@@ -65,45 +66,6 @@ void free_enemy_timers() {
     }
     free(enemy_last_turn);
     free(enemy_last_shot);
-}
-
-typedef struct node {
-    int name;
-    struct name* parent;
-    struct node* up;
-    struct node* down;
-    struct node* left;
-    struct node* right;
-} node;
-
-typedef struct {
-    int poslednji_potez;
-    bool pokusaji[4];
-} pomeranje;
-
-void free_all(node* root) {
-    if (root == NULL) {
-        return;
-    }
-    free_all(root->up);
-    free_all(root->down);
-    free_all(root->left);
-    free_all(root->right);
-    free(root);
-}
-
-node* create_node(int name, node* parent) {
-    node* nov_node = (node*)malloc(sizeof(node));
-    if (nov_node == NULL) {
-        exit(1);
-    }
-    nov_node->name = name;
-    nov_node->parent = parent;
-    nov_node->up = NULL;
-    nov_node->down = NULL;
-    nov_node->left = NULL;
-    nov_node->right = NULL;
-    return nov_node;
 }
 
 void generate_map(SDL_Renderer* renderer, int** map, int tile_size) {
@@ -195,6 +157,7 @@ void make_map(int** map) {
             else map[i][j] = rand() % 10 + 1;
         }
     }
+    map[N / 2][N / 2] = 10;
     map[N / 2][N - 1] = 11;
     map[N / 2][N - 2] = 7;
     map[N / 2 - 1][N - 1] = map[N / 2 + 1][N - 1] = 7;
@@ -811,7 +774,7 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
                 visited[nx][ny] = visited[curr.x][curr.y] + 1;
                 queue[rear++] = (Queue){ nx, ny };
 
-                if (visited[nx][ny] == 1) { 
+                if (visited[nx][ny] == 1) {
                     fmove.x = nx;
                     fmove.y = ny;
                     *dir = i;
@@ -996,7 +959,7 @@ bool can_reach_target(int x, int y, int target_x, int target_y, int** map, int d
             b++;
         }
     }
-    else if (direction == 1) { 
+    else if (direction == 1) {
         while (a < N && not_in(map[a][b], obstacles, val_length)) {
             if (a == target_x) return true;
             a++;
@@ -1008,7 +971,7 @@ bool can_reach_target(int x, int y, int target_x, int target_y, int** map, int d
             b--;
         }
     }
-    else if (direction == 3) { 
+    else if (direction == 3) {
         while (a >= 0 && not_in(map[a][b], obstacles, val_length)) {
             if (a == target_x) return true;
             a--;
@@ -1027,7 +990,7 @@ void initialize_global_matrices(int size) {
         ready_to_move[i] = (int*)calloc(size, sizeof(int));
         next_position[i] = (int**)malloc(size * sizeof(int*));
         for (int j = 0; j < size; j++) {
-            next_position[i][j] = (int*)malloc(2 * sizeof(int)); 
+            next_position[i][j] = (int*)malloc(2 * sizeof(int));
         }
     }
 }
@@ -1153,7 +1116,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                             }
                         }
                         else {
-                            new_enemies[i][j] = enemies[i][j]; 
+                            new_enemies[i][j] = enemies[i][j];
                         }
                     }
                 }
@@ -1412,12 +1375,36 @@ void start_animation(SDL_Renderer* renderer, int window_width, int window_height
 
     Mix_PlayMusic(intro, 0);
 
+    SDL_Surface* logoSurface = SDL_LoadBMP("images/logo.bmp");
+    SDL_Texture* logoTexture = SDL_CreateTextureFromSurface(renderer, logoSurface);
+    SDL_FreeSurface(logoSurface);
+
+    for (int i = 0; i < 30; i++) {
+        SDL_SetTextureAlphaMod(logoTexture, (i + 1) * (255 / 30));
+        SDL_Rect render_quad = { 0, 0, window_width, window_height };
+        Uint32 start_time = SDL_GetTicks();
+        Uint32 current_time;
+        int frame_duration = 50;
+        while (1) {
+            current_time = SDL_GetTicks();
+            if (current_time - start_time > frame_duration) {
+                break;
+            }
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, logoTexture, NULL, &render_quad);
+            SDL_RenderPresent(renderer);
+            SDL_Delay(20);
+        }
+    }
+
     for (int i = 0; i < 55; i++) {
         sprintf(filename, "images/tank_%03d.bmp", i);
         SDL_Surface* frame = SDL_LoadBMP(filename);
         textures[i] = SDL_CreateTextureFromSurface(renderer, frame);
         SDL_FreeSurface(frame);
     }
+
     SDL_Rect render_quad = { 0, 0, window_width, window_height };
     Uint32 start_time = SDL_GetTicks();
     Uint32 current_time;
@@ -1430,13 +1417,20 @@ void start_animation(SDL_Renderer* renderer, int window_width, int window_height
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         int frame_index = (current_time - start_time) / frame_duration;
-        SDL_RenderCopy(renderer, textures[frame_index], NULL, &render_quad);
+        if (frame_index < 10) {
+            SDL_RenderCopy(renderer, logoTexture, NULL, &render_quad);
+        }
+        else {
+            SDL_RenderCopy(renderer, textures[frame_index - 10], NULL, &render_quad);
+        }
         SDL_RenderPresent(renderer);
         SDL_Delay(20);
     }
+
     for (int i = 0; i < 55; i++) {
         SDL_DestroyTexture(textures[i]);
     }
+    SDL_DestroyTexture(logoTexture);
 }
 
 void set_game(int*** map, int*** enemies, int*** explosion, int*** directions, int*** bonuses, int*** bullets, int* power_up,
@@ -1733,7 +1727,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window,
-    int* size, Mix_Music* music, Mix_Music* music2) {
+    int* size, Mix_Music* music, Mix_Music* music2, Mix_Music* bck) {
     SDL_Cursor* hand_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     SDL_Cursor* arrow_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 
@@ -1852,15 +1846,18 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
                     draw_settings(renderer, window_width, window_height, map, enemies, explosion, directions, bonuses, bullets,
                         power_up, pu_started, last_pu, pu_placed_time, pu_x, pu_y, pu_placed, game, dir, tile_size, window,
                         size, music);
+                    if (play_music) Mix_PlayMusic(bck, 0);
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & buttons[3])) {
                     if (play_music) Mix_PlayMusic(music, 0);
                     readHighScores(renderer, window_width, window_height, music);
+                    if (play_music) Mix_PlayMusic(bck, 0);
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & sound)) {
                     if (play_music) {
                         Mix_PlayMusic(music, 0);
                         play_music = 0;
+                        Mix_HaltMusic();
                         SDL_FreeSurface(mus_s);
                         SDL_DestroyTexture(mus_t);
                         strcpy(music_icon, "images/xmusic.bmp");
@@ -1869,6 +1866,7 @@ void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*
                     }
                     else {
                         play_music = 1;
+                        Mix_PlayMusic(bck, 0);
                         SDL_FreeSurface(mus_s);
                         SDL_DestroyTexture(mus_t);
                         strcpy(music_icon, "images/music.bmp");
@@ -2105,6 +2103,11 @@ int main(int argc, char* argv[]) {
         printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
         return 1;
     }
+    Mix_Music* bck = Mix_LoadMUS("sounds/bck.mp3");
+    if (bck == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+        return 1;
+    }
 
     start_animation(renderer, size + hud_width, size, intro);
 
@@ -2126,15 +2129,15 @@ int main(int argc, char* argv[]) {
     bool meni_hover = false, zavrsi_hover = false;
 skok:
     skoci = false;
+    if (play_music) Mix_PlayMusic(bck, 0);
     draw_menu(renderer, size + hud_width, size, &map, &enemies, &explosion, &directions, &bonuses, &bullets,
         &power_up, &pu_started, &last_pu, &pu_placed_time, &pu_x, &pu_y, &pu_placed, &game, &dir, &tile_size, window,
-        &size, music, music2);
+        &size, music, music2, bck);
 
     last_spawn = last_move = getGameTime();
     initialize_global_matrices(N);
     initialize_enemy_timers();
     while (game) {
-
         SDL_Event event;
         int x, y;
         while (SDL_PollEvent(&event)) {
@@ -2222,7 +2225,7 @@ skok:
                 else {
                     SDL_SetCursor(arrow_cursor);
                 }
-            }   
+            }
             else if (event.type == SDL_MOUSEBUTTONDOWN) {
                 SDL_GetMouseState(&x, &y);
                 if (SDL_PointInRect(&(SDL_Point) { x, y }, & meni_rect)) {
@@ -2294,6 +2297,7 @@ skok:
 
     free_global_matrices(N);
 
+    Mix_FreeMusic(bck);
     Mix_FreeMusic(intro);
     Mix_FreeMusic(music2);
     Mix_FreeMusic(game_over_sound);
