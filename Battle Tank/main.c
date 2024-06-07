@@ -1072,7 +1072,6 @@ void free_global_matrices(int size) {
     free(next_position);
 }
 
-
 void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int** explosion, int** map, int** enemies, int N, int difficulty, int x_tar, int y_tar) {
     int** new_enemies = malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++) {
@@ -1090,6 +1089,21 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
         for (int j = 0; j < N; j++) {
             if (enemies[i][j] > 0) {
                 int next[2] = { i, j };
+
+                if (ready_to_move[i][j] == 1) {
+                    if (map[next_position[i][j][0]][next_position[i][j][1]] == 2) {
+                        new_enemies[next_position[i][j][0]][next_position[i][j][1]] = enemies[i][j];
+                        ready_to_move[i][j] = 0;
+                        continue;
+                    }
+                    else if (curr_time - enemy_last_shot[i][j] > shoot_cooldown) {
+                        enemy_last_shot[i][j] = curr_time + turn_cooldown;
+                        enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, i, j, dir);
+                        new_enemies[i][j] = enemies[i][j];
+                        continue;
+                    }
+                }
+
                 switch (difficulty) {
                 case 0:
                 case 1:
@@ -1132,19 +1146,12 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         new_enemies[i][j] = enemies[i][j];
                     }
                     else {
-                        if (ready_to_move[i][j] == 1 && map[next_position[i][j][0]][next_position[i][j][1]] == 2) {
-                            new_enemies[next_position[i][j][0]][next_position[i][j][1]] = enemies[i][j];
-                            ready_to_move[i][j] = 0;
-                        }
-                        else if (!not_in(map[next[0]][next[1]], bricks, val_length)) {
-                            if (curr_time - enemy_last_shot[i][j] > shoot_cooldown) {
-                                enemy_last_shot[i][j] = curr_time + turn_cooldown;
-                                enemy_shoot(renderer, bullets, tile_size, map, enemies, explosion, i, j, dir);
-                                ready_to_move[i][j] = 1;
-                                next_position[i][j][0] = next[0];
-                                next_position[i][j][1] = next[1];
-                                new_enemies[i][j] = enemies[i][j];
-                            }
+                        if (!not_in(map[next[0]][next[1]], bricks, val_length)) {
+                            enemies[i][j] = dir + (enemies[i][j] > 4 ? 4 : 1);
+                            new_enemies[i][j] = enemies[i][j];
+                            ready_to_move[i][j] = 1;
+                            next_position[i][j][0] = next[0];
+                            next_position[i][j][1] = next[1];
                         }
                         else {
                             if (enemies[i][j] < 5) {
@@ -1178,7 +1185,6 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
     }
     free(new_enemies);
 }
-
 
 void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, int** map, int* pu_x, int* pu_y, int* pu_placed, int** enemies, SDL_Renderer* renderer) {
     if (*power_up) {
