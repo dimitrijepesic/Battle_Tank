@@ -765,6 +765,7 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
             next[1] = ny;
             *dir = idx;
             return;
+
         }
     }
 }
@@ -786,11 +787,11 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
     Queue* queue = malloc(N * N * sizeof(Queue));
     int front = 0, rear = 0;
 
-    queue[rear++] = (Queue){ x, y }; //ubacujem u red trenutnu poziciju neprijatelja
+    queue[rear++] = (Queue){ x, y };
     visited[x][y] = 0;
 
     int move[4][2] = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
-    Queue fmove = { x, y }; // stavljam pocetni potez na invalid
+    Queue fmove = { x, y };
 
     while (front != rear) {
         Queue curr = queue[front++];
@@ -807,9 +808,11 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
                 not_in(map[nx][ny], val, val_length) &&
                 visited[nx][ny] == -1 &&
                 enemies[nx][ny] == 0 && !(nx == xnas && ny == ynas)) {
+
                 visited[nx][ny] = visited[curr.x][curr.y] + 1;
                 queue[rear++] = (Queue){ nx, ny };
-                if (fmove.x == x && fmove.y == y) {
+
+                if (visited[nx][ny] == 1) { 
                     fmove.x = nx;
                     fmove.y = ny;
                     *dir = i;
@@ -818,7 +821,8 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
         }
     }
 
-    next[0] = fmove.x; next[1] = fmove.y;
+    next[0] = fmove.x;
+    next[1] = fmove.y;
 
     for (int i = 0; i < N; i++) {
         free(visited[i]);
@@ -826,6 +830,7 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
     free(visited);
     free(queue);
 }
+
 
 int tank_optioning(int difficulty) {
     br_tenk++;
@@ -1046,7 +1051,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
         new_enemies[i] = calloc(N, sizeof(int));
     }
 
-    int dir=-1;
+    int dir = -1;
     int tankx = tank.x / tank.w;
     int tanky = tank.y / tank.h;
     int bricks[] = { 7, 8, 9 };
@@ -1058,10 +1063,12 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
             if (enemies[i][j] > 0) {
                 int next[2] = { i, j };
 
-                if (!(dir == -1)) {
+                if (dir != -1) {
                     if (ready_to_move[i][j] == 1) {
                         if (map[next_position[i][j][0]][next_position[i][j][1]] == 2) {
-                            new_enemies[next_position[i][j][0]][next_position[i][j][1]] = enemies[i][j];
+                            if (new_enemies[next_position[i][j][0]][next_position[i][j][1]] == 0) {
+                                new_enemies[next_position[i][j][0]][next_position[i][j][1]] = enemies[i][j];
+                            }
                             ready_to_move[i][j] = 0;
                             continue;
                         }
@@ -1072,8 +1079,8 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                             continue;
                         }
                     }
-
                 }
+
                 switch (difficulty) {
                 case 0:
                 case 1:
@@ -1123,25 +1130,30 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                             next_position[i][j][0] = next[0];
                             next_position[i][j][1] = next[1];
                         }
+                        else if (not_in(map[next[0]][next[1]], bricks, val_length)) {
+                            if (new_enemies[next[0]][next[1]] == 0) {
+                                if (enemies[i][j] < 5) {
+                                    switch (dir) {
+                                    case 0: new_enemies[next[0]][next[1]] = 4; break;
+                                    case 1: new_enemies[next[0]][next[1]] = 3; break;
+                                    case 2: new_enemies[next[0]][next[1]] = 2; break;
+                                    case 3: new_enemies[next[0]][next[1]] = 1; break;
+                                    default: new_enemies[i][j] = enemies[i][j]; break;
+                                    }
+                                }
+                                else {
+                                    switch (dir) {
+                                    case 0: new_enemies[next[0]][next[1]] = 8; break;
+                                    case 1: new_enemies[next[0]][next[1]] = 7; break;
+                                    case 2: new_enemies[next[0]][next[1]] = 6; break;
+                                    case 3: new_enemies[next[0]][next[1]] = 5; break;
+                                    default: new_enemies[i][j] = enemies[i][j]; break;
+                                    }
+                                }
+                            }
+                        }
                         else {
-                            if (enemies[i][j] < 5) {
-                                switch (dir) {
-                                case 0: new_enemies[next[0]][next[1]] = 4; break;
-                                case 1: new_enemies[next[0]][next[1]] = 3; break;
-                                case 2: new_enemies[next[0]][next[1]] = 2; break;
-                                case 3: new_enemies[next[0]][next[1]] = 1; break;
-                                default: new_enemies[i][j] = enemies[i][j]; break;
-                                }
-                            }
-                            else {
-                                switch (dir) {
-                                case 0: new_enemies[next[0]][next[1]] = 8; break;
-                                case 1: new_enemies[next[0]][next[1]] = 7; break;
-                                case 2: new_enemies[next[0]][next[1]] = 6; break;
-                                case 3: new_enemies[next[0]][next[1]] = 5; break;
-                                default: new_enemies[i][j] = enemies[i][j]; break;
-                                }
-                            }
+                            new_enemies[i][j] = enemies[i][j]; 
                         }
                     }
                 }
@@ -1155,6 +1167,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
     }
     free(new_enemies);
 }
+
 
 void powerUp(int* power_up, int* pu_started, int* last_pu, int* pu_placed_time, int** map, int* pu_x, int* pu_y, int* pu_placed, int** enemies, SDL_Renderer* renderer) {
     if (*power_up) {
@@ -1604,7 +1617,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 10;
                         enemy_speed = 600;
-                        spawn_time = 10000;
+                        spawn_time = 4000;
                     }
                     else if (bot_difficulty == 20) {
                         strcpy(diff, "images/srednje.bmp");
@@ -1613,7 +1626,7 @@ void draw_settings(SDL_Renderer* renderer, int window_width, int window_height, 
                         difficulty_t = SDL_CreateTextureFromSurface(renderer, difficulty_s);
                         bot_difficulty = 15;
                         enemy_speed = 500;
-                        spawn_time = 8000;
+                        spawn_time = 5000;
                     }
                 }
                 else if (SDL_PointInRect(&(SDL_Point) { x, y }, & rightarrow1_rect)) {
@@ -2023,8 +2036,6 @@ void readHighScores(SDL_Renderer* renderer, int width, int height, Mix_Music* mu
 }
 
 int main(int argc, char* argv[]) {
-    initialize_enemy_timers();
-    initialize_global_matrices(N);
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -2120,7 +2131,8 @@ skok:
         &size, music, music2);
 
     last_spawn = last_move = getGameTime();
-
+    initialize_global_matrices(N);
+    initialize_enemy_timers();
     while (game) {
 
         SDL_Event event;
