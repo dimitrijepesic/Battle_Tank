@@ -1030,7 +1030,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
         new_enemies[i] = calloc(N, sizeof(int));
     }
 
-    
+
     int tankx = tank.x / tank.w;
     int tanky = tank.y / tank.h;
     int bricks[] = { 7, 8, 9 };
@@ -1042,7 +1042,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
             if (enemies[i][j] > 0) {
                 int next[2] = { i, j };
                 int dir = -1;
-                if(!(difficulty==2))
+                if (!(difficulty == 2))
                 {
                     if (ready_to_move[i][j] == 1) {
                         if (map[next_position[i][j][0]][next_position[i][j][1]] == 2) {
@@ -1067,7 +1067,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                     break;
                 case 2:
                     bfs_next(i, j, N / 2, N - 1, tankx, tanky, map, enemies, next, &dir);
-                    printf("Koordinate tren: %d %d Koordinate nove: %d %d Target: %d %d\n", i, j, next[0], next[1], N/2, N-1);
+                    printf("Koordinate tren: %d %d Koordinate nove: %d %d Target: %d %d\n", i, j, next[0], next[1], N / 2, N - 1);
                     break;
 
                 }
@@ -1099,14 +1099,14 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         }
                     }
                     else {
-                        if (!not_in(map[next[0]][next[1]], bricks, val_length) && difficulty!=2) {
+                        if (!not_in(map[next[0]][next[1]], bricks, val_length) && difficulty != 2) {
                             enemies[i][j] = dir + (enemies[i][j] > 4 ? 4 : 1);
                             new_enemies[i][j] = enemies[i][j];
                             ready_to_move[i][j] = 1;
                             next_position[i][j][0] = next[0];
                             next_position[i][j][1] = next[1];
                         }
-                        else if (not_in(map[next[0]][next[1]], bricks, val_length)){
+                        else if (not_in(map[next[0]][next[1]], bricks, val_length)) {
                             if (new_enemies[next[0]][next[1]] == 0) {
                                 if (enemies[i][j] < 5) {
                                     switch (dir) {
@@ -1119,10 +1119,10 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                                 }
                                 else {
                                     switch (dir) {
-                                    case 0: new_enemies[next[0]][next[1]] = 6; break;
-                                    case 1: new_enemies[next[0]][next[1]] = 5; break;
-                                    case 2: new_enemies[next[0]][next[1]] = 8; break;
-                                    case 3: new_enemies[next[0]][next[1]] = 7; break;
+                                    case 0: new_enemies[next[0]][next[1]] = 8; break;
+                                    case 1: new_enemies[next[0]][next[1]] = 7; break;
+                                    case 2: new_enemies[next[0]][next[1]] = 6; break;
+                                    case 3: new_enemies[next[0]][next[1]] = 5; break;
                                     default: new_enemies[i][j] = enemies[i][j]; break;
                                     }
                                 }
