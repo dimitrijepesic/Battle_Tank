@@ -36,6 +36,15 @@ int getGameTime() {
     return SDL_GetTicks() - menu_lasted;
 }
 
+bool not_in(int value, int* arr, int length) {
+    for (int i = 0; i < length; i++) {
+        if (arr[i] == value) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void draw_menu(SDL_Renderer* renderer, int window_width, int window_height, int*** map, int*** enemies, int*** explosion, int*** directions,
     int*** bonuses, int*** bullets, int* power_up, int* pu_started, int* last_pu, int* pu_placed_time,
     int* pu_x, int* pu_y, int* pu_placed, int* game, int* dir, int* tile_size, SDL_Window* window, int* size, Mix_Music* music, Mix_Music* music2,
@@ -525,58 +534,75 @@ void enemy_shoot(SDL_Renderer* renderer, int** bullets, int tile_size, int** map
     switch (direction) {
     case 0: // levo
     {
-        if (enemy_x > 0 && map[enemy_x - 1][enemy_y] > 1 && map[enemy_x - 1][enemy_y] < 10 && !enemies[enemy_x - 1][enemy_y]) {
+        int target_x = enemy_x - 1;
+        while (target_x > 0 && map[target_x][enemy_y] == 1) {
+            target_x--;
+        }
+        if (target_x >= 0 && map[target_x][enemy_y] > 1 && map[target_x][enemy_y] < 10 && !enemies[target_x][enemy_y]) {
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 5;
             }
             else {
                 enemies[enemy_x][enemy_y] = 1;
             }
-            bullets[enemy_x][enemy_y] = 5;
+            bullets[target_x][enemy_y] = 5;
         }
         break;
     }
     case 1: // gore
     {
-        if (enemy_y > 0 && map[enemy_x][enemy_y - 1] > 1 && map[enemy_x][enemy_y - 1] < 10 && !enemies[enemy_x][enemy_y - 1]) {
+        int target_y = enemy_y - 1;
+        while (target_y > 0 && map[enemy_x][target_y] == 1) {
+            target_y--;
+        }
+        if (target_y >= 0 && map[enemy_x][target_y] > 1 && map[enemy_x][target_y] < 10 && !enemies[enemy_x][target_y]) {
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 6;
             }
             else {
                 enemies[enemy_x][enemy_y] = 2;
             }
-            bullets[enemy_x][enemy_y] = 6;
+            bullets[enemy_x][target_y] = 6;
         }
         break;
     }
     case 2: // desno
     {
-        if (enemy_x < N - 1 && map[enemy_x + 1][enemy_y] > 1 && map[enemy_x + 1][enemy_y] < 10 && !enemies[enemy_x + 1][enemy_y]) {
+        int target_x = enemy_x + 1;
+        while (target_x < N - 1 && map[target_x][enemy_y] == 1) {
+            target_x++;
+        }
+        if (target_x < N && map[target_x][enemy_y] > 1 && map[target_x][enemy_y] < 10 && !enemies[target_x][enemy_y]) {
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 7;
             }
             else {
                 enemies[enemy_x][enemy_y] = 3;
             }
-            bullets[enemy_x][enemy_y] = 7;
+            bullets[target_x][enemy_y] = 7;
         }
         break;
     }
     case 3: // dole
     {
-        if (enemy_y < N - 1 && map[enemy_x][enemy_y + 1] > 1 && map[enemy_x][enemy_y + 1] < 10 && !enemies[enemy_x][enemy_y + 1]) {
+        int target_y = enemy_y + 1;
+        while (target_y < N - 1 && map[enemy_x][target_y] == 1) {
+            target_y++;
+        }
+        if (target_y < N && map[enemy_x][target_y] > 1 && map[enemy_x][target_y] < 10 && !enemies[enemy_x][target_y]) {
             if (enemies[enemy_x][enemy_y] > 4) {
                 enemies[enemy_x][enemy_y] = 8;
             }
             else {
                 enemies[enemy_x][enemy_y] = 4;
             }
-            bullets[enemy_x][enemy_y] = 8;
+            bullets[enemy_x][target_y] = 8;
         }
         break;
     }
     }
 }
+
 void startPu(int* power_up, int** map, int* last_pu, int* pu_placed, int* pu_x, int* pu_y, int* pu_started, int* pu_placed_time, int** enemies, SDL_Renderer* renderer, int** explosion) {
     *power_up = *pu_placed;
     *last_pu = getGameTime();
@@ -693,13 +719,6 @@ void generate_enemy(SDL_Renderer* renderer, int** enemies, int tile_size) {
     SDL_DestroyTexture(spec3_t);
 }
 
-bool not_in(int x, int* niz, int length) {
-    for (int i = 0; i < length; i++) {
-        if (niz[i] == x) return false;
-    }
-    return true;
-}
-
 void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
     int val[] = { 1, 10, 11 };
     int val_length = 3;
@@ -732,13 +751,14 @@ void random_next(int x, int y, int xnas, int ynas, int** map, int** enemies, int
         }
     }
 }
+
 typedef struct {
     int x, y;
 } Queue;
 
 void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map, int** enemies, int next[2], int* dir) {
-    int val[] = { 1, 10, 11 };
-    int val_length = 3;
+    int val[] = { 1, 7, 8, 9, 10, 11 };
+    int val_length = 6;
 
     int** visited = malloc(N * sizeof(int*));
     for (int i = 0; i < N; i++) {
@@ -746,13 +766,18 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
         memset(visited[i], -1, N * sizeof(int));
     }
 
+    typedef struct {
+        int x, y;
+    } Queue;
+
     Queue* queue = malloc(N * N * sizeof(Queue));
     int front = 0, rear = 0;
 
     queue[rear++] = (Queue){ x, y };
     visited[x][y] = 0;
 
-    int move[4][2] = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
+    int move[4][2] = { {-1, 0}, {0, -1}, {1, 0}, {0, 1} };
+    int indices[] = { 0, 1, 2, 3 };
     Queue fmove = { x, y };
 
     while (front != rear) {
@@ -764,8 +789,9 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
         }
 
         for (int i = 0; i < 4; i++) {
-            int nx = curr.x + move[i][0];
-            int ny = curr.y + move[i][1];
+            int idx = indices[i];
+            int nx = curr.x + move[idx][0];
+            int ny = curr.y + move[idx][1];
             if (nx >= 0 && nx < N && ny >= 0 && ny < N &&
                 not_in(map[nx][ny], val, val_length) &&
                 visited[nx][ny] == -1 &&
@@ -777,7 +803,7 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
                 if (visited[nx][ny] == 1) {
                     fmove.x = nx;
                     fmove.y = ny;
-                    *dir = i;
+                    *dir = idx;
                 }
             }
         }
@@ -792,7 +818,6 @@ void bfs_next(int x, int y, int x_tar, int y_tar, int xnas, int ynas, int** map,
     free(visited);
     free(queue);
 }
-
 
 int tank_optioning(int difficulty) {
     br_tenk++;
@@ -879,22 +904,22 @@ int check_tank_pos(int enemy_x, int enemy_y, int** map) {
                 j++;
             }
         }
-        return (enemy_x > tank_x) ? 1 : 3;
+        return (enemy_y > tank_y) ? 1 : 3;
     }
     if (enemy_y == tank_y) {
-        j = enemy_y;
-        while (j != tank_y) {
+        i = enemy_x;
+        while (i != tank_x) {
             if (!not_in(map[i][enemy_y], val, val_length)) {
                 return -1;
             }
-            if (enemy_y > tank_y) {
-                j--;
+            if (enemy_x > tank_x) {
+                i--;
             }
-            else if (enemy_y < tank_y) {
-                j++;
+            else if (enemy_x < tank_x) {
+                i++;
             }
         }
-        return (enemy_y > tank_y) ? 0 : 2;
+        return (enemy_x > tank_x) ? 0 : 2;
     }
     return -1;
 }
@@ -937,14 +962,6 @@ int check_base_pos(int enemy_x, int enemy_y, int** map) {
         return (enemy_x > base_x) ? 0 : 2;
     }
 
-    return -1;
-}
-
-int check_brick_next(int enemy_x, int enemy_y, int** map) {
-    int val[] = { 7, 8, 9 };
-    if (!not_in(map[enemy_x][enemy_y], val, 3)) {
-        return 1;
-    }
     return -1;
 }
 
@@ -1013,7 +1030,7 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
         new_enemies[i] = calloc(N, sizeof(int));
     }
 
-    int dir = -1;
+    
     int tankx = tank.x / tank.w;
     int tanky = tank.y / tank.h;
     int bricks[] = { 7, 8, 9 };
@@ -1024,8 +1041,9 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
         for (int j = 0; j < N; j++) {
             if (enemies[i][j] > 0) {
                 int next[2] = { i, j };
-
-                if (dir != -1) {
+                int dir = -1;
+                if(!(difficulty==2))
+                {
                     if (ready_to_move[i][j] == 1) {
                         if (map[next_position[i][j][0]][next_position[i][j][1]] == 2) {
                             if (new_enemies[next_position[i][j][0]][next_position[i][j][1]] == 0) {
@@ -1042,22 +1060,17 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         }
                     }
                 }
-
                 switch (difficulty) {
                 case 0:
                 case 1:
                     random_next(i, j, tankx, tanky, map, enemies, next, &dir);
                     break;
                 case 2:
-                    if (enemies[i][j] < 5) {
-                        bfs_next(i, j, y_tar, x_tar, tankx, tanky, map, enemies, next, &dir);
-                    }
-                    else {
-                        bfs_next(i, j, N / 2, N - 1, tankx, tanky, map, enemies, next, &dir);
-                    }
+                    bfs_next(i, j, N / 2, N - 1, tankx, tanky, map, enemies, next, &dir);
+                    printf("Koordinate tren: %d %d Koordinate nove: %d %d Target: %d %d\n", i, j, next[0], next[1], N/2, N-1);
                     break;
-                }
 
+                }
                 if (curr_time - enemy_last_turn[i][j] > turn_cooldown) {
                     enemy_last_turn[i][j] = curr_time;
 
@@ -1086,14 +1099,14 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                         }
                     }
                     else {
-                        if (!not_in(map[next[0]][next[1]], bricks, val_length)) {
+                        if (!not_in(map[next[0]][next[1]], bricks, val_length) && difficulty!=2) {
                             enemies[i][j] = dir + (enemies[i][j] > 4 ? 4 : 1);
                             new_enemies[i][j] = enemies[i][j];
                             ready_to_move[i][j] = 1;
                             next_position[i][j][0] = next[0];
                             next_position[i][j][1] = next[1];
                         }
-                        else if (not_in(map[next[0]][next[1]], bricks, val_length)) {
+                        else if (not_in(map[next[0]][next[1]], bricks, val_length)){
                             if (new_enemies[next[0]][next[1]] == 0) {
                                 if (enemies[i][j] < 5) {
                                     switch (dir) {
@@ -1106,10 +1119,10 @@ void update_enemy_pos(SDL_Renderer* renderer, int** bullets, int tile_size, int*
                                 }
                                 else {
                                     switch (dir) {
-                                    case 0: new_enemies[next[0]][next[1]] = 8; break;
-                                    case 1: new_enemies[next[0]][next[1]] = 7; break;
-                                    case 2: new_enemies[next[0]][next[1]] = 6; break;
-                                    case 3: new_enemies[next[0]][next[1]] = 5; break;
+                                    case 0: new_enemies[next[0]][next[1]] = 6; break;
+                                    case 1: new_enemies[next[0]][next[1]] = 5; break;
+                                    case 2: new_enemies[next[0]][next[1]] = 8; break;
+                                    case 3: new_enemies[next[0]][next[1]] = 7; break;
                                     default: new_enemies[i][j] = enemies[i][j]; break;
                                     }
                                 }
